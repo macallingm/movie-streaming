@@ -9,17 +9,26 @@ export function SignInPage() {
   const from = location.state?.from?.pathname || '/'
 
   const [email, setEmail] = useState('macallingm@mymacewan.ca')
-  const [password, setPassword] = useState('')
+  const [password, setPassword] = useState('password123')
   const [_remember, setRemember] = useState(true)
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (signedIn) navigate(from, { replace: true })
   }, [signedIn, from, navigate])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    signIn(email)
-    navigate(from, { replace: true })
+    setError('')
+    setSubmitting(true)
+    const result = await signIn(email, password)
+    setSubmitting(false)
+    if (result.ok) {
+      navigate(from, { replace: true })
+    } else {
+      setError(result.error || 'Sign in failed')
+    }
   }
 
   return (
@@ -27,8 +36,15 @@ export function SignInPage() {
       <div className="auth-card">
         <h1>Sign in</h1>
         <p className="muted small">
-          Prototype: any password works. Try the example email or any value.
+          Use your account from the API (e.g. seed demo user). Default demo
+          password after seed is <code>password123</code> unless you changed
+          it.
         </p>
+        {error && (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
             Email or phone
@@ -47,6 +63,7 @@ export function SignInPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
             />
           </label>
           <label className="filter-check">
@@ -57,8 +74,12 @@ export function SignInPage() {
             />
             Remember me
           </label>
-          <button type="submit" className="btn btn-primary btn-block">
-            Sign in
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={submitting}
+          >
+            {submitting ? 'Signing in…' : 'Sign in'}
           </button>
           <button type="button" className="btn btn-secondary btn-block">
             Use a sign-in code

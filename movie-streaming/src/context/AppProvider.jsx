@@ -1,129 +1,346 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppContext } from './appContext'
 import {
-  getTitleById,
-  initialMyList,
-  initialWatchProgress,
-  profiles as seedProfiles,
-  subscriptionPlans,
-  subscriptions,
-  titles,
-  users,
-} from '../data/mockData'
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+  apiPatch,
+  getStoredToken,
+  setStoredToken,
+} from '../services/api'
+import {
+  normalizeMyListEntry,
+  normalizeProfile,
+  normalizeTitle,
+  normalizeUser,
+  normalizeWatchRow,
+  planFromApi,
+} from '../utils/apiNormalize'
+import { getTitleById as mockGetTitleById } from '../data/mockData'
+
+function subscriptionDTO(sub) {
+  if (!sub) return null
+  const plan = sub.planId && typeof sub.planId === 'object' ? sub.planId : null
+  const next =
+    sub.nextBillingDate instanceof Date
+      ? sub.nextBillingDate.toISOString().slice(0, 10)
+      : sub.nextBillingDate
+        ? String(sub.nextBillingDate).slice(0, 10)
+        : ''
+  const start =
+    sub.startDate instanceof Date
+      ? sub.startDate.toISOString().slice(0, 10)
+      : sub.startDate
+        ? String(sub.startDate).slice(0, 10)
+        : ''
+  return {
+    subscriptionId: sub._id,
+    _id: sub._id,
+    userId: sub.userId,
+    planId: plan?.planCode || sub.planId,
+    status: sub.status,
+    startDate: start,
+    nextBillingDate: next,
+    paymentProvider: sub.paymentProvider,
+    cancelAt: sub.cancelAt,
+  }
+}
+
+function currentPlanFromSub(sub) {
+  const plan = sub?.planId
+  if (!plan || typeof plan !== 'object') return null
+  return planFromApi(plan)
+}
+
+function paymentsToInvoices(payments) {
+  if (!Array.isArray(payments)) return []
+  return payments.map((p) => ({
+    id: p._id,
+    userId: p.userId,
+    date:
+      p.paidAt instanceof Date
+        ? p.paidAt.toISOString().slice(0, 10)
+        : String(p.paidAt || '').slice(0, 10),
+    amount: p.amount,
+    status: p.status,
+    description: p.description || '',
+  }))
+}
+
+function titleToApiBody(t) {
+  const slug = t.titleId != null ? String(t.titleId) : ''
+  return {
+    legacyKey:
+      slug.startsWith('T') ? slug : t.legacyKey || undefined,
+    titleName: t.titleName,
+    type: t.type,
+    description: t.description ?? '',
+    releaseYear: t.releaseYear,
+    maturityRating: t.maturityRating,
+    moviePosterUrl: t.moviePosterUrl,
+    genres: t.genres ?? [],
+    regionAllow: t.regionAllow ?? [],
+    videoUrl: t.videoUrl ?? '',
+    durationMinutes: t.durationMinutes,
+    seasons: t.seasons ?? [],
+  }
+}
 
 export function AppProvider({ children }) {
-  const [signedIn, setSignedIn] = useState(true)
-  const [userId, setUserId] = useState(100)
-  const [activeProfileId, setActiveProfileId] = useState(100)
-  const [myListEntries, setMyListEntries] = useState(() => [...initialMyList])
-  const [watchProgress, setWatchProgress] = useState(() =>
-    initialWatchProgress.map((w) => ({ ...w }))
-  )
-  const [libraryTitles, setLibraryTitles] = useState(() => [...titles])
+  const [signedIn, setSignedIn] = useState(false)
+  const [titlesLoading, setTitlesLoading] = useState(true)
+  const [apiError, setApiError] = useState(null)
+  const [user, setUser] = useState(null)
+  const [userProfiles, setUserProfiles] = useState([])
+  const [activeProfileId, setActiveProfileId] = useState('')
+  const [libraryTitles, setLibraryTitles] = useState([])
+  const [subscriptionPlans, setSubscriptionPlans] = useState([])
   const [selectedPlanId, setSelectedPlanId] = useState('PLAN_STD')
+  const [subscriptionRaw, setSubscriptionRaw] = useState(null)
+  const [invoices, setInvoices] = useState([])
+  const [myListEntries, setMyListEntries] = useState([])
+  const [watchProgress, setWatchProgress] = useState([])
 
-  const user = useMemo(
-    () => users.find((u) => u.userId === userId) ?? users[0],
-    [userId]
-  )
+  const refreshTitles = useCallback(async () => {
+    const data = await apiGet('/api/titles')
+    setLibraryTitles((data || []).map(normalizeTitle))
+  }, [])
 
-  const activeProfile = useMemo(
-    () =>
-      seedProfiles.find((p) => p.profileId === activeProfileId) ??
-      seedProfiles[0],
-    [activeProfileId]
-  )
+  const refreshSubscriptionAndBilling = useCallback(async () => {
+    try {
+      const sub = await apiGet('/api/subscriptions/me')
+      setSubscriptionRaw(sub)
+    } catch {
+      setSubscriptionRaw(null)
+    }
+    try {
+      const pays = await apiGet('/api/payments/me')
+      setInvoices(paymentsToInvoices(pays))
+    } catch {
+      setInvoices([])
+    }
+  }, [])
 
-  const userProfiles = useMemo(
-    () => seedProfiles.filter((p) => p.userId === userId),
-    [userId]
-  )
+  const refreshMyListAndProgress = useCallback(async (profileId) => {
+    if (!profileId) {
+      setMyListEntries([])
+      setWatchProgress([])
+      return
+    }
+    try {
+      const list = await apiGet(
+        `/api/my-list?profileId=${encodeURIComponent(profileId)}`
+      )
+      setMyListEntries((list || []).map(normalizeMyListEntry))
+    } catch {
+      setMyListEntries([])
+    }
+    try {
+      const prog = await apiGet(
+        `/api/watch-progress?profileId=${encodeURIComponent(profileId)}`
+      )
+      setWatchProgress((prog || []).map(normalizeWatchRow))
+    } catch {
+      setWatchProgress([])
+    }
+  }, [])
+
+  const loadUserSession = useCallback(async () => {
+    const me = await apiGet('/api/auth/me')
+    setUser(normalizeUser(me))
+    const profs = (await apiGet('/api/profiles')).map(normalizeProfile)
+    setUserProfiles(profs)
+    if (profs[0]) setActiveProfileId(profs[0].profileId)
+    else setActiveProfileId('')
+    await refreshSubscriptionAndBilling()
+    setSignedIn(true)
+  }, [refreshSubscriptionAndBilling])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setApiError(null)
+      setTitlesLoading(true)
+      try {
+        const [titlesData, plansData] = await Promise.all([
+          apiGet('/api/titles'),
+          apiGet('/api/plans'),
+        ])
+        if (cancelled) return
+        setLibraryTitles((titlesData || []).map(normalizeTitle))
+        const plans = (plansData || []).map(planFromApi)
+        setSubscriptionPlans(plans)
+        if (plans.some((p) => p.planId === 'PLAN_STD')) {
+          setSelectedPlanId('PLAN_STD')
+        } else if (plans[0]) {
+          setSelectedPlanId(plans[0].planId)
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setApiError(
+            e.message || 'Could not reach the API. Is the server running?'
+          )
+          setLibraryTitles([])
+        }
+      } finally {
+        if (!cancelled) setTitlesLoading(false)
+      }
+      if (cancelled) return
+      const token = getStoredToken()
+      if (token) {
+        try {
+          await loadUserSession()
+        } catch {
+          setStoredToken(null)
+          setSignedIn(false)
+          setUser(null)
+          setUserProfiles([])
+          setActiveProfileId('')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [loadUserSession])
+
+  useEffect(() => {
+    if (!signedIn || !activeProfileId) return
+    refreshMyListAndProgress(activeProfileId)
+  }, [signedIn, activeProfileId, refreshMyListAndProgress])
+
+  const activeProfile = useMemo(() => {
+    return (
+      userProfiles.find((p) => p.profileId === activeProfileId) ??
+      userProfiles[0] ??
+      null
+    )
+  }, [userProfiles, activeProfileId])
 
   const subscription = useMemo(
-    () => subscriptions.find((s) => s.userId === userId),
-    [userId]
+    () => subscriptionDTO(subscriptionRaw),
+    [subscriptionRaw]
   )
 
   const currentPlan = useMemo(
-    () =>
-      subscriptionPlans.find((p) => p.planId === subscription?.planId) ??
-      subscriptionPlans[0],
-    [subscription]
+    () => currentPlanFromSub(subscriptionRaw),
+    [subscriptionRaw]
   )
 
   const myListTitleIds = useMemo(() => {
     return new Set(
       myListEntries
         .filter((e) => e.profileId === activeProfileId)
-        .map((e) => e.titleId)
+        .map((e) => String(e.titleId))
     )
   }, [myListEntries, activeProfileId])
 
-  const toggleMyList = useCallback(
-    (titleId) => {
-      setMyListEntries((prev) => {
-        const exists = prev.some(
-          (e) =>
-            e.profileId === activeProfileId && e.titleId === titleId
-        )
-        if (exists) {
-          return prev.filter(
-            (e) =>
-              !(e.profileId === activeProfileId && e.titleId === titleId)
-          )
-        }
-        return [
-          ...prev,
-          {
-            myListId: `ML${Date.now()}`,
-            profileId: activeProfileId,
-            titleId,
-            addedAt: new Date().toISOString(),
-          },
-        ]
-      })
+  const resolveMongoTitleId = useCallback(
+    (slug) => {
+      const t = libraryTitles.find(
+        (x) =>
+          String(x.titleId) === String(slug) || String(x._id) === String(slug)
+      )
+      return t?._id
     },
-    [activeProfileId]
+    [libraryTitles]
+  )
+
+  const signIn = useCallback(
+    async (email, password) => {
+      try {
+        if (!password) {
+          return { ok: false, error: 'Password is required' }
+        }
+        const data = await apiPost('/api/auth/login', { email, password })
+        if (!data?.token) {
+          return { ok: false, error: 'Invalid server response' }
+        }
+        setStoredToken(data.token)
+        await loadUserSession()
+        return { ok: true }
+      } catch (e) {
+        return { ok: false, error: e.message || 'Login failed' }
+      }
+    },
+    [loadUserSession]
+  )
+
+  const signOut = useCallback(() => {
+    setStoredToken(null)
+    setSignedIn(false)
+    setUser(null)
+    setUserProfiles([])
+    setActiveProfileId('')
+    setSubscriptionRaw(null)
+    setInvoices([])
+    setMyListEntries([])
+    setWatchProgress([])
+  }, [])
+
+  const toggleMyList = useCallback(
+    async (titleSlug) => {
+      if (!activeProfileId) return
+      const mongoTitleId = resolveMongoTitleId(titleSlug)
+      if (!mongoTitleId) return
+      const existing = myListEntries.find(
+        (e) =>
+          e.profileId === activeProfileId && String(e.titleId) === String(titleSlug)
+      )
+      try {
+        if (existing) {
+          await apiDelete(`/api/my-list/${existing.myListId}`)
+        } else {
+          await apiPost('/api/my-list', {
+            profileId: activeProfileId,
+            titleId: mongoTitleId,
+          })
+        }
+        await refreshMyListAndProgress(activeProfileId)
+      } catch (e) {
+        console.error(e)
+      }
+    },
+    [
+      activeProfileId,
+      myListEntries,
+      resolveMongoTitleId,
+      refreshMyListAndProgress,
+    ]
   )
 
   const updateWatchProgress = useCallback(
-    (titleId, { progressSeconds, seasonNumber, episodeNumber, completed }) => {
-      setWatchProgress((prev) => {
-        const idx = prev.findIndex(
-          (w) =>
-            w.profileId === activeProfileId &&
-            w.titleId === titleId &&
-            w.seasonNumber === (seasonNumber ?? null) &&
-            w.episodeNumber === (episodeNumber ?? null)
-        )
-        const row = {
-          progressId:
-            idx >= 0 ? prev[idx].progressId : `WP${Date.now()}`,
+    async (
+      titleSlug,
+      { progressSeconds, seasonNumber, episodeNumber, completed }
+    ) => {
+      if (!activeProfileId) return
+      const mongoTitleId = resolveMongoTitleId(titleSlug)
+      if (!mongoTitleId) return
+      try {
+        await apiPut('/api/watch-progress', {
           profileId: activeProfileId,
-          titleId,
-          seasonNumber: seasonNumber ?? null,
-          episodeNumber: episodeNumber ?? null,
+          titleId: mongoTitleId,
+          seasonNumber,
+          episodeNumber,
           progressSeconds,
-          completed: completed ?? false,
-          updatedAt: new Date().toISOString(),
-        }
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = row
-          return next
-        }
-        return [...prev, row]
-      })
+          completed,
+        })
+        await refreshMyListAndProgress(activeProfileId)
+      } catch (e) {
+        console.error(e)
+      }
     },
-    [activeProfileId]
+    [activeProfileId, resolveMongoTitleId, refreshMyListAndProgress]
   )
 
   const getProgressForTitle = useCallback(
-    (titleId, seasonNumber, episodeNumber) => {
+    (titleSlug, seasonNumber, episodeNumber) => {
       return watchProgress.find(
         (w) =>
           w.profileId === activeProfileId &&
-          w.titleId === titleId &&
+          String(w.titleId) === String(titleSlug) &&
           w.seasonNumber === (seasonNumber ?? null) &&
           w.episodeNumber === (episodeNumber ?? null)
       )
@@ -131,43 +348,62 @@ export function AppProvider({ children }) {
     [watchProgress, activeProfileId]
   )
 
-  const signIn = useCallback((email) => {
-    const u = users.find((x) => x.email.toLowerCase() === email.toLowerCase())
-    if (u) {
-      setUserId(u.userId)
-      setSignedIn(true)
-      const firstProfile = seedProfiles.find((p) => p.userId === u.userId)
-      if (firstProfile) setActiveProfileId(firstProfile.profileId)
-      return { ok: true }
-    }
-    setUserId(100)
-    setSignedIn(true)
-    return { ok: true, demo: true }
-  }, [])
+  const getTitleById = useCallback(
+    (id) =>
+      libraryTitles.find(
+        (t) => String(t.titleId) === String(id) || String(t._id) === String(id)
+      ) ?? mockGetTitleById(id),
+    [libraryTitles]
+  )
 
-  const signOut = useCallback(() => {
-    setSignedIn(false)
-  }, [])
-
-  const upsertTitle = useCallback((title) => {
-    setLibraryTitles((prev) => {
-      const i = prev.findIndex((t) => t.titleId === title.titleId)
-      if (i >= 0) {
-        const next = [...prev]
-        next[i] = title
-        return next
+  const upsertTitle = useCallback(
+    async (title) => {
+      const body = titleToApiBody(title)
+      try {
+        if (title._id) {
+          const id = title.titleId || title.legacyKey || title._id
+          await apiPatch(
+            `/api/titles/${encodeURIComponent(id)}`,
+            body
+          )
+        } else {
+          await apiPost('/api/titles', body)
+        }
+        await refreshTitles()
+      } catch (e) {
+        console.error(e)
+        throw e
       }
-      return [...prev, title]
-    })
-  }, [])
+    },
+    [refreshTitles]
+  )
 
-  const deleteTitle = useCallback((titleId) => {
-    setLibraryTitles((prev) => prev.filter((t) => t.titleId !== titleId))
-  }, [])
+  const deleteTitle = useCallback(
+    async (titleSlug) => {
+      try {
+        await apiDelete(`/api/titles/${encodeURIComponent(titleSlug)}`)
+        await refreshTitles()
+      } catch (e) {
+        console.error(e)
+        throw e
+      }
+    },
+    [refreshTitles]
+  )
+
+  const activateSubscription = useCallback(
+    async (planCode, paymentProvider = 'PayPal') => {
+      await apiPost('/api/subscriptions/me', { planCode, paymentProvider })
+      await refreshSubscriptionAndBilling()
+    },
+    [refreshSubscriptionAndBilling]
+  )
 
   const value = useMemo(
     () => ({
       signedIn,
+      titlesLoading,
+      apiError,
       user,
       activeProfile,
       activeProfileId,
@@ -178,9 +414,9 @@ export function AppProvider({ children }) {
       subscriptionPlans,
       selectedPlanId,
       setSelectedPlanId,
+      invoices,
       titles: libraryTitles,
-      getTitleById: (id) =>
-        libraryTitles.find((t) => t.titleId === id) ?? getTitleById(id),
+      getTitleById,
       myListTitleIds,
       toggleMyList,
       watchProgress,
@@ -190,17 +426,24 @@ export function AppProvider({ children }) {
       signOut,
       upsertTitle,
       deleteTitle,
+      refreshTitles,
+      activateSubscription,
     }),
     [
       signedIn,
+      titlesLoading,
+      apiError,
       user,
       activeProfile,
       activeProfileId,
       userProfiles,
       subscription,
       currentPlan,
+      subscriptionPlans,
       selectedPlanId,
+      invoices,
       libraryTitles,
+      getTitleById,
       myListTitleIds,
       toggleMyList,
       watchProgress,
@@ -210,6 +453,8 @@ export function AppProvider({ children }) {
       signOut,
       upsertTitle,
       deleteTitle,
+      refreshTitles,
+      activateSubscription,
     ]
   )
 

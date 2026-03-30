@@ -1,100 +1,86 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MovieCard } from '../components/MovieCard'
 import { titleAllowedForProfile } from '../utils/maturity'
-import { fetchPopularMovies, mapTmdbMovieToTitle } from '../services/tmdb'
+import { fetchPopularTv, mapTmdbTvToTitle } from '../services/tmdb'
 import { useApp } from '../hooks/useApp'
 
-export function MoviesPage() {
+export function TvShowsPage() {
   const { activeProfile } = useApp()
   const [genre, setGenre] = useState('all')
   const [year, setYear] = useState('all')
   const [rating, setRating] = useState('all')
-  const [tmdbTitles, setTmdbTitles] = useState([])
-  const [tmdbPage, setTmdbPage] = useState(1)
-  const [tmdbLoading, setTmdbLoading] = useState(true)
+  const [tvTitles, setTvTitles] = useState([])
+  const [tvPage, setTvPage] = useState(1)
+  const [tvLoading, setTvLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       const pages = [1, 2, 3]
-      const chunks = await Promise.all(pages.map((p) => fetchPopularMovies(p)))
+      const chunks = await Promise.all(pages.map((p) => fetchPopularTv(p)))
       if (cancelled) return
-      const mapped = chunks.flat().map(mapTmdbMovieToTitle).filter(Boolean)
+      const mapped = chunks.flat().map(mapTmdbTvToTitle).filter(Boolean)
       const seen = new Set()
-      setTmdbTitles(
+      setTvTitles(
         mapped.filter((t) => {
           if (seen.has(t.titleId)) return false
           seen.add(t.titleId)
           return true
         })
       )
-      setTmdbLoading(false)
-      setTmdbPage(3)
+      setTvLoading(false)
+      setTvPage(3)
     })()
     return () => {
       cancelled = true
     }
   }, [])
 
-  const loadMoreTmdb = async () => {
-    if (tmdbLoading) return
-    const nextPage = tmdbPage + 1
-    setTmdbLoading(true)
-    const chunk = await fetchPopularMovies(nextPage)
-    const mapped = chunk.map(mapTmdbMovieToTitle).filter(Boolean)
-    setTmdbTitles((prev) => {
+  const loadMoreTv = async () => {
+    if (tvLoading) return
+    const nextPage = tvPage + 1
+    setTvLoading(true)
+    const chunk = await fetchPopularTv(nextPage)
+    const mapped = chunk.map(mapTmdbTvToTitle).filter(Boolean)
+    setTvTitles((prev) => {
       const seen = new Set(prev.map((t) => t.titleId))
-      const next = mapped.filter((t) => !seen.has(t.titleId))
-      return [...prev, ...next]
+      return [...prev, ...mapped.filter((t) => !seen.has(t.titleId))]
     })
-    setTmdbPage(nextPage)
-    setTmdbLoading(false)
+    setTvPage(nextPage)
+    setTvLoading(false)
   }
-
-  const allTitles = tmdbTitles
 
   const genres = useMemo(() => {
     const s = new Set()
-    allTitles.forEach((t) => t.genres?.forEach((g) => s.add(g)))
+    tvTitles.forEach((t) => t.genres?.forEach((g) => s.add(g)))
     return ['all', ...[...s].sort()]
-  }, [allTitles])
+  }, [tvTitles])
 
   const years = useMemo(() => {
-    const s = new Set(allTitles.map((t) => String(t.releaseYear)))
+    const s = new Set(tvTitles.map((t) => String(t.releaseYear)))
     return ['all', ...[...s].sort((a, b) => Number(b) - Number(a))]
-  }, [allTitles])
+  }, [tvTitles])
 
   const ratings = ['all', 'G', 'PG', '14A', '18+']
 
   const filtered = useMemo(() => {
-    let list = allTitles.filter((t) => titleAllowedForProfile(activeProfile, t))
+    let list = tvTitles.filter((t) => titleAllowedForProfile(activeProfile, t))
     if (genre !== 'all') list = list.filter((t) => t.genres?.includes(genre))
     if (year !== 'all') list = list.filter((t) => String(t.releaseYear) === year)
     if (rating !== 'all') list = list.filter((t) => t.maturityRating === rating)
     return list
-  }, [
-    allTitles,
-    activeProfile,
-    genre,
-    year,
-    rating,
-  ])
+  }, [tvTitles, activeProfile, genre, year, rating])
 
   return (
     <div className="page-movies">
       <header className="page-header">
-        <h1>Browse library</h1>
-        <p className="muted">
-          Filter by genre, year, rating, or titles you are watching.
-        </p>
+        <h1>Browse TV shows</h1>
+        <p className="muted">Explore shows by genre, year, and rating.</p>
       </header>
       <div className="filter-bar">
         <label>
           Genre
-          <select
-            value={genre}
-            onChange={(e) => setGenre(e.target.value)}
-          >
+          <select value={genre} onChange={(e) => setGenre(e.target.value)}>
             {genres.map((g) => (
               <option key={g} value={g}>
                 {g === 'all' ? 'All genres' : g}
@@ -114,10 +100,7 @@ export function MoviesPage() {
         </label>
         <label>
           Rating
-          <select
-            value={rating}
-            onChange={(e) => setRating(e.target.value)}
-          >
+          <select value={rating} onChange={(e) => setRating(e.target.value)}>
             {ratings.map((r) => (
               <option key={r} value={r}>
                 {r === 'all' ? 'All ratings' : r}
@@ -131,17 +114,15 @@ export function MoviesPage() {
           <MovieCard key={t.titleId} title={t} />
         ))}
       </div>
-      {filtered.length === 0 && (
-        <p className="empty-state">No titles match these filters.</p>
-      )}
+      {filtered.length === 0 && <p className="empty-state">No TV shows matched.</p>}
       <div className="catalog-actions">
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={loadMoreTmdb}
-          disabled={tmdbLoading}
+          onClick={loadMoreTv}
+          disabled={tvLoading}
         >
-          {tmdbLoading ? 'Loading more…' : 'Load more movies'}
+          {tvLoading ? 'Loading more…' : 'Load more TV shows'}
         </button>
       </div>
     </div>

@@ -1,17 +1,43 @@
-import { users, subscriptions } from '../../data/mockData'
+import { useEffect, useState } from 'react'
+import { apiGet } from '../../services/api'
 
 export function AdminUsers() {
-  const rows = users.map((u) => {
-    const sub = subscriptions.find((s) => s.userId === u.userId)
-    return { ...u, sub }
-  })
+  const [rows, setRows] = useState([])
+  const [err, setErr] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setErr('')
+      try {
+        const data = await apiGet('/api/admin/users')
+        if (!cancelled) setRows(data || [])
+      } catch (e) {
+        if (!cancelled) {
+          setErr(
+            e.message ||
+              'Could not load users (sign in as a content_manager account).'
+          )
+          setRows([])
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div>
       <h2>Users</h2>
       <p className="muted">
-        View subscribers and status — suspend accounts in the full product.
+        Data from <code>GET /api/admin/users</code> (content managers only).
       </p>
+      {err && (
+        <p className="auth-error" role="alert">
+          {err}
+        </p>
+      )}
       <table className="data-table">
         <thead>
           <tr>
@@ -19,23 +45,17 @@ export function AdminUsers() {
             <th>Email</th>
             <th>Name</th>
             <th>Status</th>
-            <th>Subscription</th>
-            <th>Action</th>
+            <th>Role</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((u) => (
-            <tr key={u.userId}>
-              <td>{u.userId}</td>
+            <tr key={u._id}>
+              <td>{u._id}</td>
               <td>{u.email}</td>
               <td>{u.name}</td>
               <td>{u.status}</td>
-              <td>{u.sub ? `${u.sub.status} (${u.sub.planId})` : '—'}</td>
-              <td>
-                <button type="button" className="btn-text" disabled>
-                  Suspend (mock)
-                </button>
-              </td>
+              <td>{u.role}</td>
             </tr>
           ))}
         </tbody>

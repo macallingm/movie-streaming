@@ -30,6 +30,9 @@ export function SidebarNav() {
       <NavLink to="/movies" style={linkStyle}>
         <span aria-hidden>▣</span> Movies
       </NavLink>
+      <NavLink to="/tv" style={linkStyle}>
+        <span aria-hidden>▤</span> TV Shows
+      </NavLink>
       <NavLink to="/profile" style={linkStyle}>
         <span aria-hidden>＋</span> My List &amp; Profile
       </NavLink>

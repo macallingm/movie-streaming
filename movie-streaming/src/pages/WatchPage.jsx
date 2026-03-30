@@ -1,7 +1,13 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
 import { getVideoUrlForTitle } from '../data/mockData'
+import {
+  fetchMovieWithCredits,
+  fetchTvWithCredits,
+  syntheticTitleFromTmdbTvDetail,
+  syntheticTitleFromTmdbDetail,
+} from '../services/tmdb'
 
 function formatTime(sec) {
   const s = Math.floor(sec % 60)
@@ -34,7 +40,7 @@ function WatchPlayer({
   const isShow = title.type === 'Show'
   const accountOk = user?.status === 'active'
   const maturityOk =
-    activeProfile.maturityLevel === 'kids'
+    activeProfile?.maturityLevel === 'kids'
       ? ['G', 'PG'].includes(title.maturityRating)
       : true
 
@@ -68,11 +74,12 @@ function WatchPlayer({
     )
     persistProgress()
   }
+  const isEmbeddedTrailer = typeof videoUrl === 'string' && videoUrl.includes('youtube.com/embed/')
 
   return (
     <div className="page-watch">
       <div className="watch-top">
-        <Link to="/movies" className="watch-back" aria-label="Back">
+        <Link to={title.tmdbType === 'tv' ? '/tv' : '/movies'} className="watch-back" aria-label="Back">
           ← Back
         </Link>
         <h1 className="watch-title">{title.titleName}</h1>
@@ -83,43 +90,61 @@ function WatchPlayer({
         )}
       </div>
       <div className="watch-stage">
-        <video
-          ref={videoRef}
-          key={videoUrl}
-          className="watch-video"
-          src={videoUrl}
-          controls
-          playsInline
-          onLoadedMetadata={(e) => {
-            const el = e.currentTarget
-            setDuration(el.duration || 0)
-            const t = progress?.progressSeconds ?? 0
-            if (t > 0) el.currentTime = t
-          }}
-          onTimeUpdate={(e) => setCurrentSec(e.currentTarget.currentTime)}
-          onPause={persistProgress}
-          onEnded={persistProgress}
-        />
+        {isEmbeddedTrailer ? (
+          <iframe
+            key={videoUrl}
+            className="watch-video"
+            src={videoUrl}
+            title={`${title.titleName} trailer`}
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        ) : (
+          <video
+            ref={videoRef}
+            key={videoUrl}
+            className="watch-video"
+            src={videoUrl}
+            controls
+            playsInline
+            onLoadedMetadata={(e) => {
+              const el = e.currentTarget
+              setDuration(el.duration || 0)
+              const t = progress?.progressSeconds ?? 0
+              if (t > 0) el.currentTime = t
+            }}
+            onTimeUpdate={(e) => setCurrentSec(e.currentTarget.currentTime)}
+            onPause={persistProgress}
+            onEnded={persistProgress}
+          />
+        )}
         <div className="watch-extras">
-          <div className="watch-controls">
-            <button type="button" onClick={() => skip(-10)} aria-label="Rewind 10 seconds">
-              ⟲ 10s
-            </button>
-            <button type="button" onClick={() => skip(10)} aria-label="Forward 10 seconds">
-              10s ⟳
-            </button>
-            {isShow && (
-              <button type="button" onClick={onNextEpisode}>
-                Next episode
-              </button>
-            )}
-          </div>
-          <p className="watch-time">
-            {formatTime(currentSec)}
-            {duration > 0 ? ` / ${formatTime(duration)}` : ''}
-          </p>
+          {!isEmbeddedTrailer && (
+            <>
+              <div className="watch-controls">
+                <button type="button" onClick={() => skip(-10)} aria-label="Rewind 10 seconds">
+                  ⟲ 10s
+                </button>
+                <button type="button" onClick={() => skip(10)} aria-label="Forward 10 seconds">
+                  10s ⟳
+                </button>
+                {isShow && (
+                  <button type="button" onClick={onNextEpisode}>
+                    Next episode
+                  </button>
+                )}
+              </div>
+              <p className="watch-time">
+                {formatTime(currentSec)}
+                {duration > 0 ? ` / ${formatTime(duration)}` : ''}
+              </p>
+            </>
+          )}
           <p className="watch-hint muted small">
-            Progress updates on pause or end (maps to WatchProgress).
+            {isEmbeddedTrailer
+              ? 'Playing official trailer from TMDb/YouTube.'
+              : 'Progress updates on pause or end (maps to WatchProgress).'}
           </p>
         </div>
       </div>
@@ -128,15 +153,60 @@ function WatchPlayer({
 }
 
 export function WatchPage() {
-  const { movieid } = useParams()
+  const { movieid: movieidParam } = useParams()
+  const movieid = movieidParam ? decodeURIComponent(movieidParam) : ''
   const [searchParams, setSearchParams] = useSearchParams()
+  const mode = searchParams.get('mode') || ''
+  const seasonQuery = Number(searchParams.get('season') || 1)
   const {
     getTitleById,
     user,
     activeProfile,
     getProgressForTitle,
   } = useApp()
-  const title = getTitleById(movieid)
+  const libTitle = getTitleById(movieid)
+  const tmdbMovieIdFromPath = libTitle == null ? movieid.match(/^tmdb-(\d+)$/)?.[1] : null
+  const tmdbTvIdFromPath = libTitle == null ? movieid.match(/^tmdb-tv-(\d+)$/)?.[1] : null
+
+  const [tmdbTitle, setTmdbTitle] = useState(null)
+
+  useEffect(() => {
+    if (!tmdbMovieIdFromPath && !tmdbTvIdFromPath) return
+    let cancelled = false
+    const seasonForTv = seasonQuery
+    const id = tmdbMovieIdFromPath || tmdbTvIdFromPath
+    ;(async () => {
+      const d = tmdbMovieIdFromPath
+        ? await fetchMovieWithCredits(id)
+        : await fetchTvWithCredits(id)
+      if (cancelled) return
+      if (!d) {
+        setTmdbTitle(null)
+        return
+      }
+      if (tmdbMovieIdFromPath) {
+        setTmdbTitle(syntheticTitleFromTmdbDetail(d))
+      } else {
+        const tv = await syntheticTitleFromTmdbTvDetail(d, seasonForTv)
+        if (cancelled) return
+        setTmdbTitle(
+          mode === 'trailer'
+            ? { ...tv, type: 'Movie', videoUrl: tv?.trailerUrl || tv?.videoUrl }
+            : tv
+        )
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tmdbMovieIdFromPath, tmdbTvIdFromPath, seasonQuery, mode])
+
+  const tmdbReady =
+    Boolean(tmdbMovieIdFromPath || tmdbTvIdFromPath) && Boolean(tmdbTitle)
+  const tmdbLoading =
+    Boolean(tmdbMovieIdFromPath || tmdbTvIdFromPath) && !tmdbReady
+
+  const title = libTitle ?? (tmdbReady ? tmdbTitle : null)
 
   const isShow = title?.type === 'Show'
   const defaultSeason = title?.seasons?.[0]?.seasonNumber ?? 1
@@ -171,7 +241,7 @@ export function WatchPage() {
 
   const accountOk = user?.status === 'active'
   const maturityOk = title
-    ? activeProfile.maturityLevel === 'kids'
+    ? activeProfile?.maturityLevel === 'kids'
       ? ['G', 'PG'].includes(title.maturityRating)
       : true
     : false
@@ -197,6 +267,14 @@ export function WatchPage() {
         episode: String(first.episodeNumber),
       })
     }
+  }
+
+  if (tmdbLoading && !title) {
+    return (
+      <div className="page-watch page-watch--empty">
+        <p>Loading…</p>
+      </div>
+    )
   }
 
   if (!title) {
