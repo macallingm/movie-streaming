@@ -3,9 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
 import { SignInCodeModal } from '../components/SignInCodeModal'
 
-export function SignInPage() {
+export function SignUpPage() {
   const {
-    signIn,
+    signUp,
     requestEmailPhoneSignInCode,
     signInWithEmailPhoneCode,
     signedIn,
@@ -15,8 +15,10 @@ export function SignInPage() {
   const from = location.state?.from?.pathname || '/'
 
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [_remember, setRemember] = useState(true)
+  const [confirm, setConfirm] = useState('')
+  const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [codeOpen, setCodeOpen] = useState(false)
@@ -33,13 +35,24 @@ export function SignInPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (password !== confirm) {
+      setError('Passwords do not match')
+      return
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
     setSubmitting(true)
-    const result = await signIn(email, password)
+    const result = await signUp(email, password, {
+      name: name.trim() || undefined,
+      phone: phone.trim() || undefined,
+    })
     setSubmitting(false)
     if (result.ok) {
       navigate(from, { replace: true })
     } else {
-      setError(result.error || 'Sign in failed')
+      setError(result.error || 'Sign up failed')
     }
   }
 
@@ -80,11 +93,10 @@ export function SignInPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <h1>Sign in</h1>
+        <h1>Sign up</h1>
         <p className="muted small">
-          Use the email and password for your account. New users can{' '}
-          <Link to="/signup">create an account</Link>. Seed demo (if used):{' '}
-          <code>password123</code>.
+          Create a subscriber account. You get your own profiles, watchlist, and
+          progress. Admin tools are only for content managers.
         </p>
         {error && (
           <p className="auth-error" role="alert">
@@ -93,39 +105,64 @@ export function SignInPage() {
         )}
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
-            Email or phone
+            Email
             <input
               type="email"
-              autoComplete="username"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </label>
           <label>
-            Password
+            Phone number
             <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 587 000 0000"
               required
             />
           </label>
-          <label className="filter-check">
+          <label>
+            Display name (optional)
             <input
-              type="checkbox"
-              checked={_remember}
-              onChange={(e) => setRemember(e.target.checked)}
+              type="text"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
             />
-            Remember me
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+            />
+          </label>
+          <label>
+            Confirm password
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+              minLength={8}
+            />
           </label>
           <button
             type="submit"
             className="btn btn-primary btn-block"
             disabled={submitting}
           >
-            {submitting ? 'Signing in…' : 'Sign in'}
+            {submitting ? 'Creating account…' : 'Create account'}
           </button>
           <button
             type="button"
@@ -141,7 +178,7 @@ export function SignInPage() {
           </button>
         </form>
         <p className="auth-footer">
-          New to StreamLab? <Link to="/signup">Sign up now</Link>
+          Already have an account? <Link to="/signin">Sign in</Link>
         </p>
         <p className="auth-footer">
           <Link to="/subscribe">Start a subscription</Link>

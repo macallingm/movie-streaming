@@ -9,6 +9,8 @@ import { WatchPage } from './pages/WatchPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { BillingPage } from './pages/BillingPage'
 import { SignInPage } from './pages/SignInPage'
+import { SignUpPage } from './pages/SignUpPage'
+import { RequireContentManager } from './components/RequireContentManager'
 import { SubscribePage } from './pages/SubscribePage'
 import { SearchPage } from './pages/SearchPage'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
@@ -23,6 +25,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/signin" element={<SignInPage />} />
+      <Route path="/signup" element={<SignUpPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/subscribe" element={<SubscribePage />} />
         <Route element={<MainLayout />}>
@@ -36,11 +39,13 @@ export default function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/billing" element={<BillingPage />} />
         </Route>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="library" element={<AdminLibrary />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="analytics" element={<AdminAnalytics />} />
+        <Route element={<RequireContentManager />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="library" element={<AdminLibrary />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

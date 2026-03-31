@@ -545,6 +545,39 @@
   text-align: center;
 }
 
+.auth-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.auth-modal {
+  width: min(400px, 100%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.75rem;
+}
+
+.auth-modal h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.tv-code-display {
+  margin: 0.75rem 0;
+  font-size: 1.1rem;
+}
+
+.tv-code-display strong {
+  letter-spacing: 0.12em;
+  font-size: 1.25rem;
+}
+
 .subscribe-page {
   min-height: 100svh;
   padding: 1.5rem;

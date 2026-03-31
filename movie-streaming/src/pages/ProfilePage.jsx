@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
 import { MovieCard } from '../components/MovieCard'
@@ -12,7 +13,22 @@ export function ProfilePage() {
     titles,
     myListTitleIds,
     toggleMyList,
+    requestDeviceSignInCode,
   } = useApp()
+
+  const [tvCode, setTvCode] = useState(null)
+  const [tvCodeErr, setTvCodeErr] = useState('')
+
+  const handleGenerateTvCode = async () => {
+    setTvCodeErr('')
+    try {
+      const data = await requestDeviceSignInCode()
+      setTvCode(data?.code ?? null)
+    } catch (e) {
+      setTvCodeErr(e.message || 'Could not create code')
+      setTvCode(null)
+    }
+  }
 
   const myListTitles = titles.filter(
     (t) =>
@@ -73,6 +89,27 @@ export function ProfilePage() {
             <Link to="/movies">Browse the library</Link>
           </p>
         )}
+      </section>
+
+      <section className="panel">
+        <h2>TV &amp; other devices</h2>
+        <p className="muted">
+          Sign in on another browser without typing your password: generate a
+          code here, then on the other device open Sign in → Use a sign-in code.
+        </p>
+        {tvCodeErr && <p className="auth-error">{tvCodeErr}</p>}
+        {tvCode && (
+          <p className="tv-code-display" aria-live="polite">
+            Your code: <strong>{tvCode}</strong> (expires in about 10 minutes)
+          </p>
+        )}
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={handleGenerateTvCode}
+        >
+          Generate sign-in code
+        </button>
       </section>
 
       <section className="panel">

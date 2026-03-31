@@ -15,8 +15,9 @@ const linkStyle = ({ isActive }) => ({
 })
 
 export function SidebarNav() {
-  const { signOut } = useApp()
+  const { signOut, user } = useApp()
   const navigate = useNavigate()
+  const showAdmin = user?.role === 'content_manager'
 
   return (
     <nav className="sidebar-nav" aria-label="Main">
@@ -39,9 +40,11 @@ export function SidebarNav() {
       <NavLink to="/billing" style={linkStyle}>
         <span aria-hidden>⚙</span> Billing
       </NavLink>
-      <NavLink to="/admin" style={linkStyle}>
-        <span aria-hidden>◈</span> Admin
-      </NavLink>
+      {showAdmin && (
+        <NavLink to="/admin" style={linkStyle}>
+          <span aria-hidden>◈</span> Admin
+        </NavLink>
+      )}
       <button
         type="button"
         className="sidebar-signout"

@@ -267,6 +267,74 @@ export function AppProvider({ children }) {
     [loadUserSession]
   )
 
+  const signUp = useCallback(
+    async (email, password, extras = {}) => {
+      try {
+        if (!email?.trim() || !password) {
+          return { ok: false, error: 'Email and password are required' }
+        }
+        const data = await apiPost('/api/auth/register', {
+          email: email.trim(),
+          password,
+          ...extras,
+        })
+        if (!data?.token) {
+          return { ok: false, error: 'Invalid server response' }
+        }
+        setStoredToken(data.token)
+        await loadUserSession()
+        return { ok: true }
+      } catch (e) {
+        return { ok: false, error: e.message || 'Sign up failed' }
+      }
+    },
+    [loadUserSession]
+  )
+
+  const signInWithCode = useCallback(
+    async (code) => {
+      try {
+        const data = await apiPost('/api/auth/device-code/redeem', { code })
+        if (!data?.token) {
+          return { ok: false, error: 'Invalid server response' }
+        }
+        setStoredToken(data.token)
+        await loadUserSession()
+        return { ok: true }
+      } catch (e) {
+        return { ok: false, error: e.message || 'Invalid or expired code' }
+      }
+    },
+    [loadUserSession]
+  )
+
+  const requestEmailPhoneSignInCode = useCallback(async (identifier) => {
+    const data = await apiPost('/api/auth/otp/request', { identifier })
+    return data
+  }, [])
+
+  const signInWithEmailPhoneCode = useCallback(
+    async (identifier, code) => {
+      try {
+        const data = await apiPost('/api/auth/otp/verify', { identifier, code })
+        if (!data?.token) {
+          return { ok: false, error: 'Invalid server response' }
+        }
+        setStoredToken(data.token)
+        await loadUserSession()
+        return { ok: true }
+      } catch (e) {
+        return { ok: false, error: e.message || 'Invalid or expired code' }
+      }
+    },
+    [loadUserSession]
+  )
+
+  const requestDeviceSignInCode = useCallback(async () => {
+    const data = await apiPost('/api/auth/device-code', {})
+    return data
+  }, [])
+
   const signOut = useCallback(() => {
     setStoredToken(null)
     setSignedIn(false)
@@ -423,6 +491,11 @@ export function AppProvider({ children }) {
       updateWatchProgress,
       getProgressForTitle,
       signIn,
+      signUp,
+      signInWithCode,
+      requestEmailPhoneSignInCode,
+      signInWithEmailPhoneCode,
+      requestDeviceSignInCode,
       signOut,
       upsertTitle,
       deleteTitle,
@@ -450,6 +523,11 @@ export function AppProvider({ children }) {
       updateWatchProgress,
       getProgressForTitle,
       signIn,
+      signUp,
+      signInWithCode,
+      requestEmailPhoneSignInCode,
+      signInWithEmailPhoneCode,
+      requestDeviceSignInCode,
       signOut,
       upsertTitle,
       deleteTitle,

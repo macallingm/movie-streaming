@@ -11,6 +11,7 @@ import titlesRoutes from './routes/titles.js'
 import myListRoutes from './routes/myList.js'
 import watchProgressRoutes from './routes/watchProgress.js'
 import adminRoutes from './routes/admin.js'
+import { ensureGroupAdminAccount } from './bootstrapAdmin.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 4000
@@ -38,6 +39,7 @@ app.use('/api/watch-progress', watchProgressRoutes)
 app.use('/api/admin', adminRoutes)
 
 await connectDb()
+await ensureGroupAdminAccount()
 app.listen(port, () => {
   console.log(`StreamLab API listening on http://localhost:${port}`)
 })
