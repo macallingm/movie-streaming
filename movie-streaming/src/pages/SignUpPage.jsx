@@ -8,6 +8,7 @@ export function SignUpPage() {
     signUp,
     requestEmailPhoneSignInCode,
     signInWithEmailPhoneCode,
+    signInWithCode,
     signedIn,
   } = useApp()
   const navigate = useNavigate()
@@ -80,13 +81,18 @@ export function SignUpPage() {
     setCodeError('')
     setCodeInfo('')
     setCodeSubmitting(true)
-    const result = await signInWithEmailPhoneCode(identifier, code)
+    const result = identifier
+      ? await signInWithEmailPhoneCode(identifier, code)
+      : await signInWithCode(code)
     setCodeSubmitting(false)
     if (result.ok) {
       setCodeOpen(false)
       navigate(from, { replace: true })
     } else {
-      setCodeError(result.error || 'Invalid code')
+      setCodeError(
+        result.error ||
+          'Invalid code. For profile-generated device codes, leave Email or phone blank.'
+      )
     }
   }
 

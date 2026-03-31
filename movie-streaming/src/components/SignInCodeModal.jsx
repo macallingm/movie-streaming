@@ -39,7 +39,8 @@ export function SignInCodeModal({
       >
         <h2 id="signin-code-title">Use a sign-in code</h2>
         <p className="muted small">
-          Enter your account email or phone to request a 6-digit sign-in code.
+          Enter email/phone to receive an SMS/email code, or leave it blank and
+          enter a Profile-generated device code.
         </p>
         {error && (
           <p className="auth-error" role="alert">
@@ -86,11 +87,7 @@ export function SignInCodeModal({
           <button
             type="submit"
             className="btn btn-primary btn-block"
-            disabled={
-              submitting ||
-              !identifier.trim() ||
-              code.replace(/\D/g, '').length !== 6
-            }
+            disabled={submitting || code.replace(/\D/g, '').length !== 6}
           >
             {submitting ? 'Signing in…' : 'Continue'}
           </button>
