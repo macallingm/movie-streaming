@@ -2,20 +2,22 @@ import bcrypt from 'bcryptjs'
 import { User } from './models/User.js'
 import { Profile } from './models/Profile.js'
 
-const GROUP_ADMIN = {
-  email: 'admin@streamlab.ca',
-  password: 'Admin#123123',
-  name: 'StreamLab Admin',
-}
-
 export async function ensureGroupAdminAccount() {
-  const email = GROUP_ADMIN.email.toLowerCase()
-  const passwordHash = await bcrypt.hash(GROUP_ADMIN.password, 10)
+  const email = String(
+    process.env.ADMIN_BOOTSTRAP_EMAIL || 'admin@streamlab.ca'
+  ).toLowerCase()
+  const password = String(
+    process.env.ADMIN_BOOTSTRAP_PASSWORD || 'change-me-in-env'
+  )
+  const name = String(
+    process.env.ADMIN_BOOTSTRAP_NAME || 'StreamLab Admin'
+  )
+  const passwordHash = await bcrypt.hash(password, 10)
   const user = await User.findOneAndUpdate(
     { email },
     {
       email,
-      name: GROUP_ADMIN.name,
+      name,
       firstName: 'StreamLab',
       lastName: 'Admin',
       role: 'content_manager',
