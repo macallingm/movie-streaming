@@ -8,6 +8,7 @@ import {
   posterUrl,
 } from '../services/tmdb'
 import { useApp } from '../hooks/useApp'
+import { MyListCircleIcon } from '../components/MyListCircleIcon'
 
 function pctVote(voteAverage) {
   if (voteAverage == null || Number.isNaN(voteAverage)) return null
@@ -145,7 +146,7 @@ export function TmdbTvBrowsePage() {
                   aria-label={inList ? 'Remove from My List' : 'Add to My List'}
                   title={inList ? 'Remove from My List' : 'Add to My List'}
                 >
-                  {inList ? '✓' : '+'}
+                  <MyListCircleIcon added={inList} />
                 </button>
               )}
               <Link className="btn btn-secondary" to="/tv">

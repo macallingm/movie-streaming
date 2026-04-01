@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { MovieCard } from '../components/MovieCard'
 import {
   fetchPopularMovies,
@@ -10,7 +11,8 @@ import {
 } from '../services/tmdb'
 
 export function SearchPage() {
-  const [q, setQ] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const q = searchParams.get('q') ?? ''
   const [tmdbResults, setTmdbResults] = useState([])
   const [searching, setSearching] = useState(true)
 
@@ -63,6 +65,15 @@ export function SearchPage() {
     return tmdbResults
   }, [tmdbResults])
 
+  const setQueryInUrl = (next) => {
+    const trimmed = next.trim()
+    if (trimmed) {
+      setSearchParams({ q: next }, { replace: true })
+    } else {
+      setSearchParams({}, { replace: true })
+    }
+  }
+
   return (
     <div className="page-search">
       <header className="page-header">
@@ -74,7 +85,7 @@ export function SearchPage() {
           value={q}
           onChange={(e) => {
             setSearching(true)
-            setQ(e.target.value)
+            setQueryInUrl(e.target.value)
           }}
           autoFocus
         />
