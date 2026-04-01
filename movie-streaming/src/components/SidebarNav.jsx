@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
+import { useUiStrings } from '../hooks/useUiStrings'
 
 const linkStyle = ({ isActive }) => ({
   color: isActive ? '#fff' : 'rgba(255,255,255,0.65)',
@@ -16,40 +17,41 @@ const linkStyle = ({ isActive }) => ({
 
 export function SidebarNav() {
   const { signOut, user } = useApp()
+  const { t } = useUiStrings()
   const navigate = useNavigate()
   const showAdmin = user?.role === 'content_manager'
 
   return (
     <nav className="sidebar-nav" aria-label="Main">
       <div className="sidebar-brand">StreamLab</div>
-      <NavLink to="/search" style={linkStyle} title="Search">
+      <NavLink to="/search" style={linkStyle} title={t('nav_search')}>
         <i className="bi bi-search sidebar-nav__icon" aria-hidden />
-        Search
+        {t('nav_search')}
       </NavLink>
       <NavLink to="/" end style={linkStyle}>
         <i className="bi bi-house sidebar-nav__icon" aria-hidden />
-        Home
+        {t('nav_home')}
       </NavLink>
       <NavLink to="/movies" style={linkStyle}>
         <i className="bi bi-film sidebar-nav__icon" aria-hidden />
-        Movies
+        {t('nav_movies')}
       </NavLink>
       <NavLink to="/tv" style={linkStyle}>
         <i className="bi bi-tv sidebar-nav__icon" aria-hidden />
-        TV Shows
+        {t('nav_tv')}
       </NavLink>
       <NavLink to="/my-list" style={linkStyle}>
         <i className="bi bi-plus-lg sidebar-nav__icon" aria-hidden />
-        My List
+        {t('nav_myList')}
       </NavLink>
       <NavLink to="/profile" style={linkStyle}>
         <i className="bi bi-person-fill sidebar-nav__icon" aria-hidden />
-        Profile
+        {t('nav_profile')}
       </NavLink>
       {showAdmin && (
         <NavLink to="/admin" style={linkStyle}>
           <i className="bi bi-shield-lock sidebar-nav__icon" aria-hidden />
-          Admin
+          {t('nav_admin')}
         </NavLink>
       )}
       <button
@@ -60,7 +62,7 @@ export function SidebarNav() {
           navigate('/signin')
         }}
       >
-        Sign out
+        {t('nav_signOut')}
       </button>
     </nav>
   )

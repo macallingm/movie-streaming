@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
+import { useUiStrings } from '../hooks/useUiStrings'
 
 export function ProfileOverviewPage() {
   const {
@@ -12,6 +13,7 @@ export function ProfileOverviewPage() {
     currentPlan,
     requestDeviceSignInCode,
   } = useApp()
+  const { t } = useUiStrings()
 
   const [tvCode, setTvCode] = useState(null)
   const [tvCodeErr, setTvCodeErr] = useState('')
@@ -31,19 +33,17 @@ export function ProfileOverviewPage() {
     <div className="profile-overview">
       <section className="panel profile-overview__identity">
         <p className="muted small" style={{ margin: '0 0 0.35rem' }}>
-          Signed in as
+          {t('overview_signedInAs')}
         </p>
         <p className="profile-overview__email">{user?.email}</p>
         <p className="muted">
-          Account status: <strong>{user?.status}</strong>
+          {t('overview_accountStatus')} <strong>{user?.status}</strong>
         </p>
       </section>
 
       <section className="panel">
-        <h2>Profiles</h2>
-        <p className="muted">
-          Switch who is watching (maturity and language follow each profile).
-        </p>
+        <h2>{t('overview_profiles')}</h2>
+        <p className="muted">{t('overview_profilesHelp')}</p>
         <div className="profile-pills">
           {userProfiles.map((p) => (
             <button
@@ -61,20 +61,20 @@ export function ProfileOverviewPage() {
       </section>
 
       <section className="panel profile-membership-card">
-        <h2>Membership</h2>
+        <h2>{t('overview_membership')}</h2>
         {subscription && currentPlan ? (
           <>
             <p className="plan-name">{currentPlan.planName}</p>
             <p className="muted">
-              Next billing: {subscription.nextBillingDate || '—'} · Status:{' '}
-              {subscription.status}
+              {t('overview_nextBilling')} {subscription.nextBillingDate || '—'} ·{' '}
+              {t('overview_status')} {subscription.status}
             </p>
           </>
         ) : (
-          <p className="muted">No active subscription on file.</p>
+          <p className="muted">{t('overview_noSub')}</p>
         )}
         <Link className="profile-quick-link profile-quick-link--inline" to="/profile/billing">
-          Manage membership
+          {t('overview_manageMembership')}
           <span className="profile-quick-link__chevron" aria-hidden>
             ›
           </span>
@@ -82,11 +82,13 @@ export function ProfileOverviewPage() {
       </section>
 
       <section className="panel">
-        <h2>Quick links</h2>
+        <h2>{t('overview_quickLinks')}</h2>
         <ul className="profile-quick-links">
           <li>
             <Link className="profile-quick-link" to="/subscribe">
-              <span className="profile-quick-link__label">Change plan</span>
+              <span className="profile-quick-link__label">
+                {t('overview_changePlan')}
+              </span>
               <span className="profile-quick-link__chevron" aria-hidden>
                 ›
               </span>
@@ -95,7 +97,7 @@ export function ProfileOverviewPage() {
           <li>
             <Link className="profile-quick-link" to="/profile/billing">
               <span className="profile-quick-link__label">
-                Billing &amp; invoices
+                {t('overview_billingInvoices')}
               </span>
               <span className="profile-quick-link__chevron" aria-hidden>
                 ›
@@ -105,9 +107,11 @@ export function ProfileOverviewPage() {
           <li>
             <Link className="profile-quick-link" to="/profile/settings">
               <span>
-                <span className="profile-quick-link__label">Edit settings</span>
+                <span className="profile-quick-link__label">
+                  {t('overview_editSettings')}
+                </span>
                 <span className="profile-quick-link__sub muted small">
-                  Languages, viewing activity, and more
+                  {t('overview_editSettingsSub')}
                 </span>
               </span>
               <span className="profile-quick-link__chevron" aria-hidden>
@@ -118,9 +122,11 @@ export function ProfileOverviewPage() {
           <li>
             <Link className="profile-quick-link" to="/profile/password">
               <span>
-                <span className="profile-quick-link__label">Update password</span>
+                <span className="profile-quick-link__label">
+                  {t('overview_updatePassword')}
+                </span>
                 <span className="profile-quick-link__sub muted small">
-                  Change your sign-in password
+                  {t('overview_updatePasswordSub')}
                 </span>
               </span>
               <span className="profile-quick-link__chevron" aria-hidden>
@@ -132,15 +138,13 @@ export function ProfileOverviewPage() {
       </section>
 
       <section className="panel">
-        <h2>TV &amp; other devices</h2>
-        <p className="muted">
-          Sign in on another browser without typing your password: generate a
-          code here, then on the other device open Sign in → Use a sign-in code.
-        </p>
+        <h2>{t('overview_tvDevices')}</h2>
+        <p className="muted">{t('overview_tvDevicesHelp')}</p>
         {tvCodeErr && <p className="auth-error">{tvCodeErr}</p>}
         {tvCode && (
           <p className="tv-code-display" aria-live="polite">
-            Your code: <strong>{tvCode}</strong> (expires in about 10 minutes)
+            {t('overview_yourCode')} <strong>{tvCode}</strong>{' '}
+            {t('overview_expires')}
           </p>
         )}
         <button
@@ -148,7 +152,7 @@ export function ProfileOverviewPage() {
           className="btn btn-secondary"
           onClick={handleGenerateTvCode}
         >
-          Generate sign-in code
+          {t('overview_generateCode')}
         </button>
       </section>
     </div>

@@ -394,9 +394,11 @@ export function AppProvider({ children }) {
       body
     )
     const normalized = normalizeProfile(raw)
+    if (!normalized) return null
+    const id = String(profileId)
     setUserProfiles((prev) =>
       prev.map((p) =>
-        p.profileId === profileId ? { ...p, ...normalized } : p
+        String(p.profileId) === id ? { ...p, ...normalized } : p
       )
     )
     return normalized
