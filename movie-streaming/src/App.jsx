@@ -1,13 +1,17 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { MainLayout } from './components/MainLayout'
+import { ProfileLayout } from './components/ProfileLayout'
 import { AdminLayout } from './components/AdminLayout'
 import { RequireAuth } from './components/RequireAuth'
 import { HomePage } from './pages/HomePage'
 import { MoviesPage } from './pages/MoviesPage'
 import { TvShowsPage } from './pages/TvShowsPage'
 import { WatchPage } from './pages/WatchPage'
-import { ProfilePage } from './pages/ProfilePage'
-import { BillingPage } from './pages/BillingPage'
+import { MyListPage } from './pages/MyListPage'
+import { ProfileOverviewPage } from './pages/ProfileOverviewPage'
+import { ProfileBillingPage } from './pages/ProfileBillingPage'
+import { ProfileSettingsPage } from './pages/ProfileSettingsPage'
+import { ProfilePasswordPage } from './pages/ProfilePasswordPage'
 import { SignInPage } from './pages/SignInPage'
 import { SignUpPage } from './pages/SignUpPage'
 import { RequireContentManager } from './components/RequireContentManager'
@@ -36,8 +40,14 @@ export default function App() {
           <Route path="/watch/:movieid" element={<WatchPage />} />
           <Route path="/browse/movie/:tmdbId" element={<TmdbBrowsePage />} />
           <Route path="/browse/tv/:tmdbId" element={<TmdbTvBrowsePage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/billing" element={<BillingPage />} />
+          <Route path="/my-list" element={<MyListPage />} />
+          <Route path="/profile" element={<ProfileLayout />}>
+            <Route index element={<ProfileOverviewPage />} />
+            <Route path="billing" element={<ProfileBillingPage />} />
+            <Route path="settings" element={<ProfileSettingsPage />} />
+            <Route path="password" element={<ProfilePasswordPage />} />
+          </Route>
+          <Route path="/billing" element={<Navigate to="/profile/billing" replace />} />
         </Route>
         <Route element={<RequireContentManager />}>
           <Route path="/admin" element={<AdminLayout />}>

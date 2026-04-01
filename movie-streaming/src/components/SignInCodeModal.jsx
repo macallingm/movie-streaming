@@ -39,8 +39,11 @@ export function SignInCodeModal({
       >
         <h2 id="signin-code-title">Use a sign-in code</h2>
         <p className="muted small">
-          Enter email/phone to receive an SMS/email code, or leave it blank and
-          enter a Profile-generated device code.
+          Enter the <strong>email on your StreamLab account</strong> and tap
+          Send sign-in code — you will get a 6-digit code by email (server must
+          have SMTP configured). For SMS, use your saved phone number and set up
+          Twilio on the API. Or leave email/phone blank and enter a code from{' '}
+          <strong>Profile → Generate sign-in code</strong> (TV / second device).
         </p>
         {error && (
           <p className="auth-error" role="alert">

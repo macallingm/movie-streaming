@@ -1,18 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
 
-export function BillingPage() {
+export function BillingPanel() {
   const { subscription, currentPlan, invoices } = useApp()
 
   return (
-    <div className="page-billing">
-      <header className="page-header">
-        <h1>Billing</h1>
-        <p className="muted">
-          Subscription and payment history from your account (API / MongoDB).
-        </p>
-      </header>
-
+    <>
       <section className="panel billing-plan">
         <h2>Current plan</h2>
         {subscription && currentPlan ? (
@@ -62,6 +55,6 @@ export function BillingPage() {
           </table>
         )}
       </section>
-    </div>
+    </>
   )
 }

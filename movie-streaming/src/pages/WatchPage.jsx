@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
 import { getVideoUrlForTitle } from '../data/mockData'
@@ -156,6 +162,11 @@ export function WatchPage() {
   const { movieid: movieidParam } = useParams()
   const movieid = movieidParam ? decodeURIComponent(movieidParam) : ''
   const [searchParams, setSearchParams] = useSearchParams()
+  const subscriptionGateShown = useRef(false)
+
+  useEffect(() => {
+    subscriptionGateShown.current = false
+  }, [movieid])
   const mode = searchParams.get('mode') || ''
   const seasonQuery = Number(searchParams.get('season') || 1)
   const {
@@ -163,6 +174,8 @@ export function WatchPage() {
     user,
     activeProfile,
     getProgressForTitle,
+    hasActiveSubscription,
+    openSubscriptionGate,
   } = useApp()
   const libTitle = getTitleById(movieid)
   const tmdbMovieIdFromPath = libTitle == null ? movieid.match(/^tmdb-(\d+)$/)?.[1] : null
@@ -207,6 +220,12 @@ export function WatchPage() {
     Boolean(tmdbMovieIdFromPath || tmdbTvIdFromPath) && !tmdbReady
 
   const title = libTitle ?? (tmdbReady ? tmdbTitle : null)
+
+  useEffect(() => {
+    if (!title || hasActiveSubscription || subscriptionGateShown.current) return
+    subscriptionGateShown.current = true
+    openSubscriptionGate()
+  }, [title, hasActiveSubscription, openSubscriptionGate])
 
   const isShow = title?.type === 'Show'
   const defaultSeason = title?.seasons?.[0]?.seasonNumber ?? 1
@@ -286,11 +305,22 @@ export function WatchPage() {
     )
   }
 
+  if (!hasActiveSubscription) {
+    return (
+      <div className="page-watch page-watch--empty">
+        <p>You need an active subscription to play this content.</p>
+        <Link to="/profile/billing">View billing</Link>
+        {' · '}
+        <Link to="/subscribe">Choose a plan</Link>
+      </div>
+    )
+  }
+
   if (!accountOk) {
     return (
       <div className="page-watch page-watch--empty">
         <p>Your account must be active to play content.</p>
-        <Link to="/billing">View billing</Link>
+        <Link to="/profile/billing">View billing</Link>
       </div>
     )
   }

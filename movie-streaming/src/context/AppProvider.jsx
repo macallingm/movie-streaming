@@ -18,6 +18,11 @@ import {
   planFromApi,
 } from '../utils/apiNormalize'
 import { getTitleById as mockGetTitleById } from '../data/mockData'
+import { SubscriptionRequiredModal } from '../components/SubscriptionRequiredModal'
+import {
+  readTmdbMyListForProfile,
+  writeTmdbMyListForProfile,
+} from '../utils/tmdbMyListStorage'
 
 function subscriptionDTO(sub) {
   if (!sub) return null
@@ -101,6 +106,8 @@ export function AppProvider({ children }) {
   const [invoices, setInvoices] = useState([])
   const [myListEntries, setMyListEntries] = useState([])
   const [watchProgress, setWatchProgress] = useState([])
+  const [subscriptionGateOpen, setSubscriptionGateOpen] = useState(false)
+  const [tmdbMyListTitles, setTmdbMyListTitles] = useState([])
 
   const refreshTitles = useCallback(async () => {
     const data = await apiGet('/api/titles')
@@ -228,6 +235,40 @@ export function AppProvider({ children }) {
     [subscriptionRaw]
   )
 
+  const hasActiveSubscription = subscription?.status === 'Active'
+
+  const openSubscriptionGate = useCallback(() => {
+    setSubscriptionGateOpen(true)
+  }, [])
+
+  const closeSubscriptionGate = useCallback(() => {
+    setSubscriptionGateOpen(false)
+  }, [])
+
+  /** Call from Play / watch links: returns false and opens modal when not subscribed. */
+  const guardPlayNavigation = useCallback(
+    (e) => {
+      if (hasActiveSubscription) return true
+      e?.preventDefault?.()
+      openSubscriptionGate()
+      return false
+    },
+    [hasActiveSubscription, openSubscriptionGate]
+  )
+
+  useEffect(() => {
+    if (!signedIn) {
+      setSubscriptionGateOpen(false)
+      setTmdbMyListTitles([])
+      return
+    }
+    if (!activeProfileId) {
+      setTmdbMyListTitles([])
+      return
+    }
+    setTmdbMyListTitles(readTmdbMyListForProfile(activeProfileId))
+  }, [signedIn, activeProfileId])
+
   const myListTitleIds = useMemo(() => {
     return new Set(
       myListEntries
@@ -346,6 +387,50 @@ export function AppProvider({ children }) {
     setMyListEntries([])
     setWatchProgress([])
   }, [])
+
+  const patchProfile = useCallback(async (profileId, body) => {
+    const raw = await apiPatch(
+      `/api/profiles/${encodeURIComponent(profileId)}`,
+      body
+    )
+    const normalized = normalizeProfile(raw)
+    setUserProfiles((prev) =>
+      prev.map((p) =>
+        p.profileId === profileId ? { ...p, ...normalized } : p
+      )
+    )
+    return normalized
+  }, [])
+
+  const updatePassword = useCallback(
+    async (currentPassword, newPassword) => {
+      await apiPatch('/api/auth/password', {
+        currentPassword,
+        newPassword,
+      })
+    },
+    []
+  )
+
+  const toggleTmdbMyList = useCallback(
+    (title) => {
+      if (!activeProfileId || !title?.titleId) return
+      setTmdbMyListTitles((prev) => {
+        const exists = prev.some((x) => x.titleId === title.titleId)
+        const next = exists
+          ? prev.filter((x) => x.titleId !== title.titleId)
+          : [...prev, title]
+        writeTmdbMyListForProfile(activeProfileId, next)
+        return next
+      })
+    },
+    [activeProfileId]
+  )
+
+  const isTmdbInMyList = useCallback(
+    (titleId) => tmdbMyListTitles.some((x) => x.titleId === titleId),
+    [tmdbMyListTitles]
+  )
 
   const toggleMyList = useCallback(
     async (titleSlug) => {
@@ -478,6 +563,10 @@ export function AppProvider({ children }) {
       setActiveProfileId,
       userProfiles,
       subscription,
+      hasActiveSubscription,
+      guardPlayNavigation,
+      openSubscriptionGate,
+      closeSubscriptionGate,
       currentPlan,
       subscriptionPlans,
       selectedPlanId,
@@ -487,6 +576,11 @@ export function AppProvider({ children }) {
       getTitleById,
       myListTitleIds,
       toggleMyList,
+      tmdbMyListTitles,
+      toggleTmdbMyList,
+      isTmdbInMyList,
+      patchProfile,
+      updatePassword,
       watchProgress,
       updateWatchProgress,
       getProgressForTitle,
@@ -511,6 +605,10 @@ export function AppProvider({ children }) {
       activeProfileId,
       userProfiles,
       subscription,
+      hasActiveSubscription,
+      guardPlayNavigation,
+      openSubscriptionGate,
+      closeSubscriptionGate,
       currentPlan,
       subscriptionPlans,
       selectedPlanId,
@@ -519,6 +617,11 @@ export function AppProvider({ children }) {
       getTitleById,
       myListTitleIds,
       toggleMyList,
+      tmdbMyListTitles,
+      toggleTmdbMyList,
+      isTmdbInMyList,
+      patchProfile,
+      updatePassword,
       watchProgress,
       updateWatchProgress,
       getProgressForTitle,
@@ -536,5 +639,13 @@ export function AppProvider({ children }) {
     ]
   )
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+      <SubscriptionRequiredModal
+        open={subscriptionGateOpen}
+        onClose={closeSubscriptionGate}
+      />
+    </AppContext.Provider>
+  )
 }

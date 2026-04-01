@@ -23,26 +23,33 @@ export function SidebarNav() {
     <nav className="sidebar-nav" aria-label="Main">
       <div className="sidebar-brand">StreamLab</div>
       <NavLink to="/search" style={linkStyle} title="Search">
-        <span aria-hidden>🔍</span> Search
+        <i className="bi bi-search sidebar-nav__icon" aria-hidden />
+        Search
       </NavLink>
       <NavLink to="/" end style={linkStyle}>
-        <span aria-hidden>⌂</span> Home
+        <i className="bi bi-house sidebar-nav__icon" aria-hidden />
+        Home
       </NavLink>
       <NavLink to="/movies" style={linkStyle}>
-        <span aria-hidden>▣</span> Movies
+        <i className="bi bi-film sidebar-nav__icon" aria-hidden />
+        Movies
       </NavLink>
       <NavLink to="/tv" style={linkStyle}>
-        <span aria-hidden>▤</span> TV Shows
+        <i className="bi bi-tv sidebar-nav__icon" aria-hidden />
+        TV Shows
+      </NavLink>
+      <NavLink to="/my-list" style={linkStyle}>
+        <i className="bi bi-plus-lg sidebar-nav__icon" aria-hidden />
+        My List
       </NavLink>
       <NavLink to="/profile" style={linkStyle}>
-        <span aria-hidden>＋</span> My List &amp; Profile
-      </NavLink>
-      <NavLink to="/billing" style={linkStyle}>
-        <span aria-hidden>⚙</span> Billing
+        <i className="bi bi-person-fill sidebar-nav__icon" aria-hidden />
+        Profile
       </NavLink>
       {showAdmin && (
         <NavLink to="/admin" style={linkStyle}>
-          <span aria-hidden>◈</span> Admin
+          <i className="bi bi-shield-lock sidebar-nav__icon" aria-hidden />
+          Admin
         </NavLink>
       )}
       <button

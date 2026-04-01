@@ -3,8 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   fetchMovieWithCredits,
   formatRuntimeMinutes,
+  mapTmdbMovieDetailToTitle,
   posterUrl,
 } from '../services/tmdb'
+import { useApp } from '../hooks/useApp'
 
 function pctVote(voteAverage) {
   if (voteAverage == null || Number.isNaN(voteAverage)) return null
@@ -12,6 +14,11 @@ function pctVote(voteAverage) {
 }
 
 export function TmdbBrowsePage() {
+  const {
+    guardPlayNavigation,
+    toggleTmdbMyList,
+    isTmdbInMyList,
+  } = useApp()
   const { tmdbId } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState(null)
@@ -94,6 +101,8 @@ export function TmdbBrowsePage() {
   }
 
   const watchTo = `/watch/${encodeURIComponent(`tmdb-${data.id}`)}`
+  const listTitle = mapTmdbMovieDetailToTitle(data)
+  const inList = listTitle ? isTmdbInMyList(listTitle.titleId) : false
 
   return (
     <div className="title-browse">
@@ -147,9 +156,24 @@ export function TmdbBrowsePage() {
               <p className="title-browse__tagline">{data.tagline}</p>
             )}
             <div className="title-browse__actions">
-              <Link className="btn btn-primary title-browse__play" to={watchTo}>
-                ▶ Play trailer
+              <Link
+                className="btn btn-primary title-browse__play"
+                to={watchTo}
+                onClick={guardPlayNavigation}
+              >
+                ▶ Play
               </Link>
+              {listTitle && (
+                <button
+                  type="button"
+                  className={`btn btn-icon-mylist${inList ? ' btn-icon-mylist--on' : ''}`}
+                  onClick={() => toggleTmdbMyList(listTitle)}
+                  aria-label={inList ? 'Remove from My List' : 'Add to My List'}
+                  title={inList ? 'Remove from My List' : 'Add to My List'}
+                >
+                  {inList ? '✓' : '+'}
+                </button>
+              )}
               <Link className="btn btn-secondary" to="/movies">
                 More titles
               </Link>

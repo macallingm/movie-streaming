@@ -10,6 +10,10 @@ import {
   redeemDeviceCode,
 } from '../deviceCodes.js'
 import { issueOtp, verifyOtp } from '../otpCodes.js'
+import {
+  isEmailTransportConfigured,
+  sendSignInCodeEmail,
+} from '../services/mail.js'
 
 const router = Router()
 
@@ -163,6 +167,34 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 })
 
+router.patch('/password', requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body
+    if (!currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ error: 'currentPassword and newPassword are required' })
+    }
+    if (String(newPassword).length < 8) {
+      return res
+        .status(400)
+        .json({ error: 'New password must be at least 8 characters' })
+    }
+    const user = await User.findById(req.userId)
+    if (!user) return res.status(404).json({ error: 'User not found' })
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash)
+    if (!ok) {
+      return res.status(401).json({ error: 'Current password is incorrect' })
+    }
+    user.passwordHash = await bcrypt.hash(String(newPassword), 10)
+    await user.save()
+    res.json({ ok: true })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Could not update password' })
+  }
+})
+
 /** Create a 6-digit code (signed-in user) — redeem on another browser via POST /device-code/redeem */
 router.post('/device-code', requireAuth, (req, res) => {
   try {
@@ -247,8 +279,21 @@ router.post('/otp/request', async (req, res) => {
 
     const masked = isEmail ? maskEmail(email) : maskPhone(phone || identifierRaw)
     if (isEmail) {
-      // Email provider not configured yet; keep dev log fallback.
-      console.log(`[OTP] Email ${otp.code} to ${masked} (user ${user._id})`)
+      if (isEmailTransportConfigured()) {
+        try {
+          await sendSignInCodeEmail(email, otp.code)
+        } catch (sendErr) {
+          console.error('[OTP email]', sendErr.message || sendErr)
+          return res.status(502).json({
+            error:
+              'Could not send email code. Check server logs. For Gmail use an App Password and set EMAIL_FROM to the same account as SMTP_USER.',
+          })
+        }
+      } else {
+        console.log(
+          `[OTP] Email SMTP not fully configured (use real SMTP_USER + SMTP_PASS, e.g. Gmail App Password). Code ${otp.code} for ${masked} (user ${user._id})`
+        )
+      }
     } else if (canSendSms()) {
       try {
         await sendSmsCode(phone, otp.code)

@@ -179,6 +179,46 @@ export function mapTmdbMovieToTitle(m) {
   }
 }
 
+/** Map TMDb movie *detail* JSON to the same card shape as list results. */
+export function mapTmdbMovieDetailToTitle(d) {
+  if (!d?.id) return null
+  const genreIds = Array.isArray(d.genres)
+    ? d.genres.map((g) => g.id).filter(Boolean)
+    : Array.isArray(d.genre_ids)
+      ? d.genre_ids
+      : []
+  return mapTmdbMovieToTitle({
+    id: d.id,
+    title: d.title,
+    overview: d.overview,
+    poster_path: d.poster_path,
+    release_date: d.release_date,
+    adult: d.adult,
+    vote_average: d.vote_average,
+    genre_ids: genreIds,
+  })
+}
+
+/** Map TMDb TV *detail* JSON to the same card shape as list results. */
+export function mapTmdbTvDetailToTitle(d) {
+  if (!d?.id) return null
+  const genreIds = Array.isArray(d.genres)
+    ? d.genres.map((g) => g.id).filter(Boolean)
+    : Array.isArray(d.genre_ids)
+      ? d.genre_ids
+      : []
+  return mapTmdbTvToTitle({
+    id: d.id,
+    name: d.name,
+    overview: d.overview,
+    poster_path: d.poster_path,
+    first_air_date: d.first_air_date,
+    adult: d.adult,
+    vote_average: d.vote_average,
+    genre_ids: genreIds,
+  })
+}
+
 export function mapTmdbTvToTitle(t) {
   if (!t) return null
   const genreIds = Array.isArray(t.genre_ids) ? t.genre_ids : []

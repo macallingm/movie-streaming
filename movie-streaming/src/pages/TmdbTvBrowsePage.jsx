@@ -4,8 +4,10 @@ import {
   fetchTvSeason,
   fetchTvWithCredits,
   formatRuntimeMinutes,
+  mapTmdbTvDetailToTitle,
   posterUrl,
 } from '../services/tmdb'
+import { useApp } from '../hooks/useApp'
 
 function pctVote(voteAverage) {
   if (voteAverage == null || Number.isNaN(voteAverage)) return null
@@ -13,6 +15,11 @@ function pctVote(voteAverage) {
 }
 
 export function TmdbTvBrowsePage() {
+  const {
+    guardPlayNavigation,
+    toggleTmdbMyList,
+    isTmdbInMyList,
+  } = useApp()
   const { tmdbId } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState(null)
@@ -85,6 +92,8 @@ export function TmdbTvBrowsePage() {
   }
 
   const trailerTo = `/watch/${encodeURIComponent(`tmdb-tv-${data.id}`)}?mode=trailer`
+  const listTitle = mapTmdbTvDetailToTitle(data)
+  const inList = listTitle ? isTmdbInMyList(listTitle.titleId) : false
 
   return (
     <div className="title-browse">
@@ -121,9 +130,24 @@ export function TmdbTvBrowsePage() {
             </div>
             {genres && <p className="title-browse__genres">{genres}</p>}
             <div className="title-browse__actions">
-              <Link className="btn btn-primary title-browse__play" to={trailerTo}>
-                ▶ Play trailer
+              <Link
+                className="btn btn-primary title-browse__play"
+                to={trailerTo}
+                onClick={guardPlayNavigation}
+              >
+                ▶ Play
               </Link>
+              {listTitle && (
+                <button
+                  type="button"
+                  className={`btn btn-icon-mylist${inList ? ' btn-icon-mylist--on' : ''}`}
+                  onClick={() => toggleTmdbMyList(listTitle)}
+                  aria-label={inList ? 'Remove from My List' : 'Add to My List'}
+                  title={inList ? 'Remove from My List' : 'Add to My List'}
+                >
+                  {inList ? '✓' : '+'}
+                </button>
+              )}
               <Link className="btn btn-secondary" to="/tv">
                 More shows
               </Link>
@@ -158,7 +182,12 @@ export function TmdbTvBrowsePage() {
           {(seasonData?.episodes || []).map((ep) => {
             const playEpTo = `/watch/${encodeURIComponent(`tmdb-tv-${data.id}`)}?season=${seasonNum}&episode=${ep.episode_number || 1}`
             return (
-              <Link key={ep.id || ep.episode_number} className="tv-episode" to={playEpTo}>
+              <Link
+                key={ep.id || ep.episode_number}
+                className="tv-episode"
+                to={playEpTo}
+                onClick={guardPlayNavigation}
+              >
                 <span className="tv-episode__index">{ep.episode_number}.</span>
                 <span className="tv-episode__name">
                   {ep.name || `Episode ${ep.episode_number}`}

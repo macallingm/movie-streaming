@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
+import { useApp } from '../hooks/useApp'
 
 export function MovieCard({ title }) {
+  const { guardPlayNavigation } = useApp()
   const poster = title.moviePosterUrl
   const inner = (
     <>
@@ -37,6 +39,7 @@ export function MovieCard({ title }) {
       <Link
         to={`/watch/${encodeURIComponent(title.titleId)}${resume}`}
         className="movie-card__link"
+        onClick={guardPlayNavigation}
       >
         {inner}
       </Link>

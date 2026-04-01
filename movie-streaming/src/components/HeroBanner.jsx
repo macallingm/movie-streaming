@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
+import { useApp } from '../hooks/useApp'
 
 export function HeroBanner({ title, backdropUrl, posterUrl }) {
+  const { guardPlayNavigation } = useApp()
   const bg = backdropUrl || posterUrl
   return (
     <section
@@ -20,7 +22,11 @@ export function HeroBanner({ title, backdropUrl, posterUrl }) {
         <h2 className="hero-title">{title?.titleName ?? 'Featured'}</h2>
         <p className="hero-desc">{title?.description}</p>
         <div className="hero-actions">
-          <Link className="btn btn-primary" to={`/watch/${title?.titleId}`}>
+          <Link
+            className="btn btn-primary"
+            to={`/watch/${encodeURIComponent(title?.titleId ?? '')}`}
+            onClick={guardPlayNavigation}
+          >
             Play
           </Link>
           <button type="button" className="btn btn-secondary">
