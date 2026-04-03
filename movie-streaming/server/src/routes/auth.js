@@ -1,8 +1,10 @@
+import { createHash, randomBytes } from 'node:crypto'
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import twilio from 'twilio'
 import { User } from '../models/User.js'
+import { PasswordResetToken } from '../models/PasswordResetToken.js'
 import { Profile } from '../models/Profile.js'
 import { requireAuth } from '../middleware/auth.js'
 import {
@@ -12,6 +14,7 @@ import {
 import { issueOtp, verifyOtp } from '../otpCodes.js'
 import {
   isEmailTransportConfigured,
+  sendPasswordResetEmail,
   sendSignInCodeEmail,
 } from '../services/mail.js'
 
@@ -68,6 +71,13 @@ function signToken(user) {
     { sub: user._id.toString(), role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
+  )
+}
+
+function clientOriginBase() {
+  return String(process.env.CLIENT_ORIGIN || 'http://localhost:5173').replace(
+    /\/$/,
+    ''
   )
 }
 
@@ -153,6 +163,92 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Login failed' })
+  }
+})
+
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const emailRaw = String(req.body?.email || '').trim().toLowerCase()
+    if (!emailRaw || !emailRaw.includes('@')) {
+      return res.status(400).json({ error: 'A valid email address is required' })
+    }
+    const user = await User.findOne({ email: emailRaw })
+    const generic = {
+      ok: true,
+      message:
+        'If an account exists for that email, you will receive password reset instructions shortly.',
+    }
+    if (!user) {
+      return res.json(generic)
+    }
+    await PasswordResetToken.deleteMany({ userId: user._id })
+    const rawToken = randomBytes(32).toString('base64url')
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex')
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+    await PasswordResetToken.create({
+      userId: user._id,
+      tokenHash,
+      expiresAt,
+    })
+    const resetUrl = `${clientOriginBase()}/reset-password?token=${encodeURIComponent(rawToken)}`
+    if (isEmailTransportConfigured()) {
+      try {
+        await sendPasswordResetEmail(user.email, resetUrl)
+      } catch (sendErr) {
+        console.error('[forgot-password email]', sendErr.message || sendErr)
+        await PasswordResetToken.deleteMany({ userId: user._id })
+        return res.status(502).json({
+          error:
+            'Could not send reset email. Check server SMTP settings and logs.',
+        })
+      }
+    } else {
+      console.log(
+        `[Password reset] SMTP not configured. One-time link for ${user.email}:\n${resetUrl}`
+      )
+    }
+    return res.json(generic)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Could not process password reset request' })
+  }
+})
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const rawToken = String(req.body?.token || '').trim()
+    const newPassword = String(req.body?.newPassword || '')
+    if (!rawToken) {
+      return res.status(400).json({ error: 'Reset token is required' })
+    }
+    if (newPassword.length < 8) {
+      return res
+        .status(400)
+        .json({ error: 'Password must be at least 8 characters' })
+    }
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex')
+    const record = await PasswordResetToken.findOne({ tokenHash })
+    if (!record || record.expiresAt < new Date()) {
+      if (record) await record.deleteOne()
+      return res.status(400).json({
+        error: 'Invalid or expired reset link. Request a new one from Sign in.',
+      })
+    }
+    const user = await User.findById(record.userId)
+    if (!user) {
+      await PasswordResetToken.deleteMany({ userId: record.userId })
+      return res.status(400).json({ error: 'Invalid or expired reset link.' })
+    }
+    user.passwordHash = await bcrypt.hash(newPassword, 10)
+    await user.save()
+    await PasswordResetToken.deleteMany({ userId: user._id })
+    res.json({
+      ok: true,
+      message: 'Password updated. You can sign in with your new password.',
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Could not reset password' })
   }
 })
 

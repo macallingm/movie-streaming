@@ -2,17 +2,26 @@
 
 React frontend plus an **Express + MongoDB** API. The catalog, auth, profiles, My List, watch progress, billing, and admin screens load from the API when it is reachable (`VITE_API_URL`, default `http://localhost:4000`). If the API is down, you will see an error banner and an empty catalog.
 
+Layout:
+
+- **`client/`** — React + Vite app (`src/`, `public/`, `vite.config.js`).
+- **`server/`** — Express + Mongoose API.
+
 ## Frontend (React + Vite)
 
 ### Install dependencies
 
-From this project folder (`movie-streaming`):
+From this project folder (`movie-streaming`), npm workspaces install the client:
 
 ```bash
 npm install
 ```
 
+(Alternatively: `cd client` then `npm install`.)
+
 ### Run the React app
+
+From the project root:
 
 ```bash
 npm start
@@ -24,11 +33,11 @@ Or:
 npm run dev
 ```
 
-(`npm start` and `npm run dev` both start Vite.)
+(`npm start` and `npm run dev` both run Vite in `client/`.)
 
 ### Environment (frontend)
 
-Copy `.env.example` to `.env` in the project root if you want to override:
+Copy `client/.env.example` to `client/.env` if you want to override:
 
 - `VITE_API_URL` — base URL of the Express API (default `http://localhost:4000`).
 - `VITE_TMDB_API_KEY` — optional; still used only for the **home hero** artwork.
@@ -60,6 +69,27 @@ copy .env.example .env
 ```
 
 Edit `.env`: set `MONGODB_URI`, `JWT_SECRET`, and optionally `CLIENT_ORIGIN` (default `http://localhost:5173`).
+
+#### Email sign-in codes (SMTP)
+
+Sign in → **Use a sign-in code** sends a 6-digit code to the user’s email when the identifier is an address that exists in the database. The API sends mail with **Nodemailer**; add SMTP settings to **`server/.env`**:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=youraddress@gmail.com
+SMTP_PASS=your-app-password
+EMAIL_FROM_NAME=StreamLab
+# Optional: address shown to recipients (defaults to SMTP_USER if empty)
+EMAIL_FROM_ADDRESS=
+```
+
+Restart the API after changing env. For Gmail, create an [App password](https://support.google.com/accounts/answer/185833).
+
+**From name vs address:** `EMAIL_FROM_NAME` controls the friendly name (e.g. “StreamLab”). The **email address** recipients see is `EMAIL_FROM_ADDRESS` if set, otherwise `SMTP_USER`. With plain Gmail SMTP, that address is usually still your Gmail; to show only something like `noreply@yourdomain.com`, use a transactional provider (SendGrid, Mailgun, etc.) and a **verified sender** domain, then set `EMAIL_FROM_ADDRESS` (or the full `EMAIL_FROM` string) accordingly.
+
+Without valid SMTP credentials, the server only logs the code to the terminal. For local testing only, you can set `OTP_DEV_ECHO=true` so the API also returns `devCode` in the JSON.
 
 To **import real movie metadata** (posters, titles, descriptions) from TMDb into MongoDB, add **`TMDB_API_KEY`** to **`server/.env`** (same value as frontend `VITE_TMDB_API_KEY` is fine). Then sign in as a **content_manager** user and use **Admin → Library → Import TMDb trending / now playing**. Titles get IDs like `TMDB-12345` and appear in Search, Movies, and **Play** in-app; video is still a **legal sample clip** for the course (TMDb does not provide full films).
 
@@ -100,6 +130,8 @@ npm run dev
 
 Default base URL: `http://localhost:4000`.
 
+After pulling new API routes (e.g. forgot password), restart the server if you use `npm start` without `--watch`, or ensure `npm run dev` has reloaded.
+
 ### REST endpoints (summary)
 
 | Method | Path | Auth | Description |
@@ -107,6 +139,8 @@ Default base URL: `http://localhost:4000`.
 | GET | `/api/health` | — | Liveness check |
 | POST | `/api/auth/register` | — | Create user + default profile |
 | POST | `/api/auth/login` | — | Returns JWT |
+| POST | `/api/auth/forgot-password` | — | Body `{ email }`; sends reset link if account exists (SMTP); same response either way |
+| POST | `/api/auth/reset-password` | — | Body `{ token, newPassword }` from email link; invalidates other reset tokens for user |
 | GET | `/api/auth/me` | Bearer | Current user |
 | GET | `/api/plans` | — | Active subscription plans |
 | GET/PATCH/DELETE | `/api/profiles` … | Bearer | Profiles for logged-in user |
@@ -137,6 +171,8 @@ Send `Authorization: Bearer <token>` for protected routes.
 | `/profile` | Profiles + My List |
 | `/billing` | Plan + invoices |
 | `/signin` | Sign-in (prototype) |
+| `/forgot-password` | Request password reset email |
+| `/reset-password` | Set new password (link from email; `?token=`) |
 | `/subscribe` | Plan + payment steps |
 | `/admin` | Manager dashboard |
 | `/admin/library` | Title CRUD (mock) |

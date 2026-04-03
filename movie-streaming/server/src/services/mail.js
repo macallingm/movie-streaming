@@ -81,3 +81,22 @@ export async function sendSignInCodeEmail(to, code) {
     html: `<p>Your StreamLab sign-in code is <strong style="font-size:1.25em;letter-spacing:0.08em">${code}</strong>.</p><p>It expires in 10 minutes. If you did not request this, you can ignore this email.</p>`,
   })
 }
+
+/**
+ * @param {string} to - recipient email
+ * @param {string} resetUrl - full URL with token query param
+ */
+export async function sendPasswordResetEmail(to, resetUrl) {
+  const t = getTransporter()
+  if (!t) {
+    throw new Error('Email transport not configured')
+  }
+  const from = getMailFrom()
+  await t.sendMail({
+    from,
+    to,
+    subject: 'Reset your StreamLab password',
+    text: `Reset your password by opening this link (valid for 1 hour):\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
+    html: `<p>Reset your StreamLab password using the button below. This link expires in <strong>1 hour</strong>.</p><p><a href="${resetUrl}" style="display:inline-block;padding:0.65rem 1.2rem;background:#e50914;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Reset password</a></p><p style="word-break:break-all;font-size:0.85rem;color:#666">Or copy: ${resetUrl}</p><p>If you did not request this, you can ignore this email.</p>`,
+  })
+}

@@ -33,13 +33,16 @@ export function posterUrl(path, size = 'w500') {
 
 /**
  * Fetch trending movies for home carousels. Returns [] if no key or error.
+ * @param {number} [page=1] TMDb results page (20 items per page).
  */
-export async function fetchTrendingMovies() {
+export async function fetchTrendingMovies(page = 1) {
   const key = getApiKey()
   if (!key) return []
   try {
     const res = await fetch(
-      `${TMDB_BASE}/trending/movie/week?api_key=${encodeURIComponent(key)}`
+      `${TMDB_BASE}/trending/movie/week?api_key=${encodeURIComponent(
+        key
+      )}&page=${encodeURIComponent(page)}`
     )
     if (!res.ok) return []
     const data = await res.json()
@@ -49,12 +52,17 @@ export async function fetchTrendingMovies() {
   }
 }
 
-export async function fetchTrendingTv() {
+/**
+ * @param {number} [page=1] TMDb results page (20 items per page).
+ */
+export async function fetchTrendingTv(page = 1) {
   const key = getApiKey()
   if (!key) return []
   try {
     const res = await fetch(
-      `${TMDB_BASE}/trending/tv/week?api_key=${encodeURIComponent(key)}`
+      `${TMDB_BASE}/trending/tv/week?api_key=${encodeURIComponent(
+        key
+      )}&page=${encodeURIComponent(page)}`
     )
     if (!res.ok) return []
     const data = await res.json()
@@ -65,14 +73,14 @@ export async function fetchTrendingTv() {
 }
 
 /** In theatres / recent releases — good for a “New this week” style row. */
-export async function fetchNowPlayingMovies() {
+export async function fetchNowPlayingMovies(page = 1) {
   const key = getApiKey()
   if (!key) return []
   try {
     const res = await fetch(
       `${TMDB_BASE}/movie/now_playing?api_key=${encodeURIComponent(
         key
-      )}&language=en-US&page=1`
+      )}&language=en-US&page=${encodeURIComponent(page)}`
     )
     if (!res.ok) return []
     const data = await res.json()

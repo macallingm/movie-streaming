@@ -108,16 +108,22 @@ export function SignInPage() {
               required
             />
           </label>
-          <label>
-            Password
+          <div className="auth-field">
+            <div className="auth-label-row">
+              <label htmlFor="signin-password">Password</label>
+              <Link to="/forgot-password" className="auth-inline-link">
+                Forgot password?
+              </Link>
+            </div>
             <input
+              id="signin-password"
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-          </label>
+          </div>
           <label className="filter-check">
             <input
               type="checkbox"

@@ -24,6 +24,29 @@ async function parseJsonSafe(res) {
   }
 }
 
+function formatApiErrorMessage(res, data) {
+  const raw = data?.error
+  if (typeof raw !== 'string') {
+    return (
+      (data?.error != null && String(data.error)) ||
+      res.statusText ||
+      'Request failed'
+    )
+  }
+  const pre = raw.match(/<pre>([^<]*)<\/pre>/i)
+  if (pre) {
+    const inner = pre[1].trim()
+    if (/^Cannot (POST|GET|PUT|PATCH|DELETE)\s/i.test(inner)) {
+      return `${inner} — restart the API from the server folder (npm run dev) so it loads the latest routes, or check VITE_API_URL.`
+    }
+    return inner
+  }
+  if (raw.includes('<!DOCTYPE') || raw.toLowerCase().includes('<html')) {
+    return 'The server returned a web page instead of JSON. Check VITE_API_URL points to the StreamLab API (e.g. http://localhost:4000).'
+  }
+  return raw
+}
+
 /**
  * @param {string} path - e.g. /api/titles
  * @param {RequestInit} options
@@ -47,7 +70,7 @@ export async function apiRequest(path, options = {}) {
   const res = await fetch(url, { ...options, headers })
   const data = await parseJsonSafe(res)
   if (!res.ok) {
-    const msg = data?.error || res.statusText || 'Request failed'
+    const msg = formatApiErrorMessage(res, data)
     const err = new Error(msg)
     err.status = res.status
     err.body = data

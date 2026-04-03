@@ -13,12 +13,29 @@ import {
 } from '../services/tmdb'
 import { titleAllowedForProfile } from '../utils/maturity'
 
+/** Max titles per horizontal row after maturity filter (TMDb ~20 per page). */
+const HOME_ROW_MAX_ITEMS = 48
+
+async function fetchTmdbPagesDeduped(fetchPage, pageCount) {
+  const parts = await Promise.all(
+    Array.from({ length: pageCount }, (_, i) => fetchPage(i + 1))
+  )
+  const merged = parts.flat()
+  const seen = new Set()
+  return merged.filter((item) => {
+    const id = item?.id
+    if (id == null || seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
+}
+
 function tmdbListForProfile(list, profile) {
   return list
     .map(mapTmdbMovieToTitle)
     .filter(Boolean)
     .filter((t) => titleAllowedForProfile(profile, t))
-    .slice(0, 12)
+    .slice(0, HOME_ROW_MAX_ITEMS)
 }
 
 function tmdbTvListForProfile(list, profile) {
@@ -26,7 +43,7 @@ function tmdbTvListForProfile(list, profile) {
     .map(mapTmdbTvToTitle)
     .filter(Boolean)
     .filter((t) => titleAllowedForProfile(profile, t))
-    .slice(0, 12)
+    .slice(0, HOME_ROW_MAX_ITEMS)
 }
 
 export function HomePage() {
@@ -41,10 +58,10 @@ export function HomePage() {
     let cancelled = false
     ;(async () => {
       const [trending, nowPlaying, popular, trendingTv] = await Promise.all([
-        fetchTrendingMovies(),
-        fetchNowPlayingMovies(),
-        fetchPopularMovies(1),
-        fetchTrendingTv(),
+        fetchTmdbPagesDeduped(fetchTrendingMovies, 3),
+        fetchTmdbPagesDeduped(fetchNowPlayingMovies, 3),
+        fetchTmdbPagesDeduped(fetchPopularMovies, 3),
+        fetchTmdbPagesDeduped(fetchTrendingTv, 3),
       ])
       if (cancelled) return
       if (trending[0]) setTrendingMeta(trending[0])
