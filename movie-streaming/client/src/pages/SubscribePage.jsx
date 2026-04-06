@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
+
+const SUBSCRIBE_RESUME_KEY = 'streamlab_subscribe_resume'
 
 export function SubscribePage() {
   const {
@@ -8,15 +10,55 @@ export function SubscribePage() {
     selectedPlanId,
     setSelectedPlanId,
     activateSubscription,
+    signedIn,
   } = useApp()
+  const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
   const selected = subscriptionPlans.find((p) => p.planId === selectedPlanId)
 
+  useEffect(() => {
+    if (!signedIn || subscriptionPlans.length === 0) return
+    const raw = sessionStorage.getItem(SUBSCRIBE_RESUME_KEY)
+    if (!raw) return
+    try {
+      const resume = JSON.parse(raw)
+      if (
+        resume.planId &&
+        subscriptionPlans.some((p) => p.planId === resume.planId)
+      ) {
+        setSelectedPlanId(resume.planId)
+      }
+      if (resume.step === 2) setStep(2)
+    } catch {
+      /* ignore */
+    } finally {
+      sessionStorage.removeItem(SUBSCRIBE_RESUME_KEY)
+    }
+  }, [signedIn, subscriptionPlans, setSelectedPlanId])
+
+  function goToPaymentStep() {
+    if (!selected) return
+    if (!signedIn) {
+      sessionStorage.setItem(
+        SUBSCRIBE_RESUME_KEY,
+        JSON.stringify({ step: 2, planId: selected.planId })
+      )
+      navigate('/signin', { state: { from: { pathname: '/subscribe' } } })
+      return
+    }
+    setStep(2)
+  }
+
   async function completeCheckout() {
     if (!selected) return
+    if (!signedIn) {
+      setErr('Please sign in to complete checkout.')
+      navigate('/signin', { state: { from: { pathname: '/subscribe' } } })
+      return
+    }
     setErr('')
     setBusy(true)
     try {
@@ -32,21 +74,41 @@ export function SubscribePage() {
     }
   }
 
+  const subscribeLocation = { pathname: '/subscribe' }
+
   return (
     <div className="subscribe-page">
       <header className="subscribe-header">
-        <Link to="/" className="subscribe-signout">
+        <Link to="/" className="subscribe-home">
           Home
         </Link>
+        <div className="subscribe-header__right">
+          {!signedIn && (
+            <nav className="subscribe-header__auth" aria-label="Account">
+              <Link to="/signin" state={{ from: subscribeLocation }}>
+                Sign in
+              </Link>
+              <Link to="/signup" state={{ from: subscribeLocation }}>
+                Sign up
+              </Link>
+            </nav>
+          )}
+        </div>
       </header>
       {step === 1 && (
         <div className="subscribe-step">
           <h1>Choose your plan</h1>
           <p className="muted">
-            Plans load from the API (<code>GET /api/plans</code>). Completing
-            checkout calls <code>POST /api/subscriptions/me</code> (requires
-            sign-in).
+            Plans load from the API (<code>GET /api/plans</code>). Checkout uses{' '}
+            <code>POST /api/subscriptions/me</code> and requires a signed-in
+            account.
           </p>
+          {!signedIn && (
+            <p className="muted small">
+              Pick a plan, then continue — you&apos;ll sign in (or create an
+              account) before payment.
+            </p>
+          )}
           {subscriptionPlans.length === 0 && (
             <p className="muted">No plans returned — check API and seed.</p>
           )}
@@ -73,9 +135,9 @@ export function SubscribePage() {
             type="button"
             className="btn btn-primary btn-block"
             disabled={!selected}
-            onClick={() => setStep(2)}
+            onClick={goToPaymentStep}
           >
-            Next
+            {signedIn ? 'Next' : 'Continue to sign in'}
           </button>
         </div>
       )}

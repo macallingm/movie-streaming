@@ -34,8 +34,8 @@ export default function App() {
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/subscribe" element={<SubscribePage />} />
       <Route element={<RequireAuth />}>
-        <Route path="/subscribe" element={<SubscribePage />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />

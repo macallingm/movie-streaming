@@ -47,7 +47,7 @@ function tmdbTvListForProfile(list, profile) {
 }
 
 export function HomePage() {
-  const { activeProfile } = useApp()
+  const { activeProfile, signedIn, watchProgress, getTitleById } = useApp()
   const [trendingMeta, setTrendingMeta] = useState(null)
   const [tmdbTrending, setTmdbTrending] = useState([])
   const [tmdbNowPlaying, setTmdbNowPlaying] = useState([])
@@ -102,6 +102,45 @@ export function HomePage() {
     [tmdbTrendingTv, activeProfile]
   )
 
+  const continueWatching = useMemo(() => {
+    if (!signedIn || !activeProfile?.profileId) return []
+    const pid = String(activeProfile.profileId)
+    const rows = [...watchProgress]
+      .filter(
+        (w) =>
+          String(w.profileId) === pid &&
+          !w.completed &&
+          (w.progressSeconds || 0) > 15
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+      )
+    const byTitle = new Map()
+    for (const row of rows) {
+      const tid = String(row.titleId)
+      if (!byTitle.has(tid)) byTitle.set(tid, row)
+    }
+    const out = []
+    for (const row of byTitle.values()) {
+      const t = getTitleById(row.titleId)
+      if (!t) continue
+      const q =
+        t.type === 'Show' &&
+        row.seasonNumber != null &&
+        row.episodeNumber != null
+          ? `?season=${row.seasonNumber}&episode=${row.episodeNumber}`
+          : ''
+      out.push({ ...t, _resumeQuery: q })
+      if (out.length >= 18) break
+    }
+    return out
+  }, [signedIn, activeProfile, watchProgress, getTitleById])
+
+  const continueLabel = activeProfile?.profileName
+    ? `Continue Watching for ${activeProfile.profileName}`
+    : 'Continue Watching'
+
   return (
     <div className="page-home">
       <HeroBanner
@@ -109,6 +148,9 @@ export function HomePage() {
         backdropUrl={heroBackdrop}
         posterUrl={heroPoster}
       />
+      {continueWatching.length > 0 && (
+        <ContentRow label={continueLabel} titles={continueWatching} />
+      )}
       <ContentRow label="Trending now" titles={trendingRow} />
       <ContentRow label="New this week" titles={newThisWeek} />
       <ContentRow label="Trending TV shows" titles={trendingShows} />

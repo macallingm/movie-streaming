@@ -8,6 +8,7 @@ import {
 } from '../services/tmdb'
 import { useApp } from '../hooks/useApp'
 import { MyListCircleIcon } from '../components/MyListCircleIcon'
+import { shouldShowResume } from '../utils/watchProgressDisplay'
 
 function pctVote(voteAverage) {
   if (voteAverage == null || Number.isNaN(voteAverage)) return null
@@ -19,6 +20,7 @@ export function TmdbBrowsePage() {
     guardPlayNavigation,
     toggleTmdbMyList,
     isTmdbInMyList,
+    getProgressForTitle,
   } = useApp()
   const { tmdbId } = useParams()
   const navigate = useNavigate()
@@ -83,6 +85,15 @@ export function TmdbBrowsePage() {
     data?.genres?.map((g) => g.name).filter(Boolean).join(' · ') || ''
   const runtime = formatRuntimeMinutes(data?.runtime)
   const score = pctVote(data?.vote_average)
+
+  const movieProgress = useMemo(
+    () =>
+      tmdbId
+        ? getProgressForTitle(`tmdb-${tmdbId}`, null, null)
+        : null,
+    [tmdbId, getProgressForTitle]
+  )
+  const showResume = shouldShowResume(movieProgress)
 
   if (loading) {
     return (
@@ -162,7 +173,7 @@ export function TmdbBrowsePage() {
                 to={watchTo}
                 onClick={guardPlayNavigation}
               >
-                ▶ Play
+                {showResume ? '▶ Resume' : '▶ Play'}
               </Link>
               {listTitle && (
                 <button

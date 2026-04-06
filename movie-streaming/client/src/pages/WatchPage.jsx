@@ -80,7 +80,8 @@ function WatchPlayer({
     )
     persistProgress()
   }
-  const isEmbeddedTrailer = typeof videoUrl === 'string' && videoUrl.includes('youtube.com/embed/')
+  const isEmbeddedTrailer =
+    typeof videoUrl === 'string' && videoUrl.includes('youtube.com/embed/')
 
   return (
     <div className="page-watch">

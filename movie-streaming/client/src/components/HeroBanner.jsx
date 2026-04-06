@@ -1,9 +1,19 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
+import { shouldShowResume } from '../utils/watchProgressDisplay'
 
 export function HeroBanner({ title, backdropUrl, posterUrl }) {
-  const { guardPlayNavigation } = useApp()
+  const { guardPlayNavigation, getProgressForTitle } = useApp()
   const bg = backdropUrl || posterUrl
+
+  const progress = useMemo(() => {
+    if (!title?.titleId) return null
+    return getProgressForTitle(title.titleId, null, null)
+  }, [title?.titleId, getProgressForTitle])
+
+  const showResume = shouldShowResume(progress)
+
   return (
     <section
       className="hero-banner"
@@ -27,7 +37,7 @@ export function HeroBanner({ title, backdropUrl, posterUrl }) {
             to={`/watch/${encodeURIComponent(title?.titleId ?? '')}`}
             onClick={guardPlayNavigation}
           >
-            Play
+            {showResume ? 'Resume' : 'Play'}
           </Link>
           <button type="button" className="btn btn-secondary">
             Watch trailer
@@ -37,3 +47,4 @@ export function HeroBanner({ title, backdropUrl, posterUrl }) {
     </section>
   )
 }
+

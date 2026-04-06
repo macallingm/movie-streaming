@@ -339,12 +339,35 @@
   display: block;
 }
 
+.movie-card__poster-wrap {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 .movie-card__poster {
   aspect-ratio: 2 / 3;
   border-radius: 8px;
   background: #2a2d36 center/cover;
   border: 1px solid var(--border);
   transition: transform 0.15s ease;
+}
+
+.movie-card__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.movie-card__progress-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 0 1px 1px 0;
+  min-width: 2px;
 }
 
 .movie-card__link:hover .movie-card__poster {
@@ -720,12 +743,38 @@
 
 .subscribe-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
-.subscribe-signout {
+.subscribe-home {
   color: #93c5fd;
   text-decoration: none;
+}
+
+.subscribe-header__right {
+  display: flex;
+  align-items: center;
+}
+
+.subscribe-header__auth {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.subscribe-header__auth a {
+  color: #93c5fd;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.subscribe-header__auth a:hover {
+  text-decoration: underline;
 }
 
 .subscribe-step {

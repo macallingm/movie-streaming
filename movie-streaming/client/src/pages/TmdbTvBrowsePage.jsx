@@ -9,6 +9,7 @@ import {
 } from '../services/tmdb'
 import { useApp } from '../hooks/useApp'
 import { MyListCircleIcon } from '../components/MyListCircleIcon'
+import { latestProgressForTitle } from '../utils/watchProgressDisplay'
 
 function pctVote(voteAverage) {
   if (voteAverage == null || Number.isNaN(voteAverage)) return null
@@ -20,6 +21,8 @@ export function TmdbTvBrowsePage() {
     guardPlayNavigation,
     toggleTmdbMyList,
     isTmdbInMyList,
+    watchProgress,
+    activeProfileId,
   } = useApp()
   const { tmdbId } = useParams()
   const navigate = useNavigate()
@@ -75,6 +78,42 @@ export function TmdbTvBrowsePage() {
     const c = Array.isArray(data?.created_by) ? data.created_by : []
     return c.map((row) => row.name).filter(Boolean).slice(0, 3)
   }, [data])
+
+  const tvProgress = useMemo(
+    () =>
+      tmdbId
+        ? latestProgressForTitle(
+            watchProgress,
+            activeProfileId,
+            `tmdb-tv-${tmdbId}`
+          )
+        : null,
+    [watchProgress, activeProfileId, tmdbId]
+  )
+
+  const mainPlayTo = useMemo(() => {
+    if (!tmdbId) return '/'
+    if (
+      tvProgress &&
+      tvProgress.seasonNumber != null &&
+      tvProgress.episodeNumber != null
+    ) {
+      return `/watch/${encodeURIComponent(`tmdb-tv-${tmdbId}`)}?season=${tvProgress.seasonNumber}&episode=${tvProgress.episodeNumber}`
+    }
+    const ep =
+      seasonData?.episodes?.find((e) => (e.episode_number ?? 0) > 0)
+        ?.episode_number ??
+      seasonData?.episodes?.[0]?.episode_number ??
+      1
+    return `/watch/${encodeURIComponent(`tmdb-tv-${tmdbId}`)}?season=${seasonNum}&episode=${ep}`
+  }, [tvProgress, tmdbId, seasonNum, seasonData])
+
+  const mainPlayLabel =
+    tvProgress &&
+    !tvProgress.completed &&
+    (tvProgress.progressSeconds || 0) > 0
+      ? '▶ Resume'
+      : '▶ Play'
 
   if (loading) {
     return (
@@ -133,10 +172,17 @@ export function TmdbTvBrowsePage() {
             <div className="title-browse__actions">
               <Link
                 className="btn btn-primary title-browse__play"
+                to={mainPlayTo}
+                onClick={guardPlayNavigation}
+              >
+                {mainPlayLabel}
+              </Link>
+              <Link
+                className="btn btn-secondary"
                 to={trailerTo}
                 onClick={guardPlayNavigation}
               >
-                ▶ Play
+                Watch trailer
               </Link>
               {listTitle && (
                 <button

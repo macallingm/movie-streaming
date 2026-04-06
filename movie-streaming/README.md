@@ -173,7 +173,7 @@ Send `Authorization: Bearer <token>` for protected routes.
 | `/signin` | Sign-in (prototype) |
 | `/forgot-password` | Request password reset email |
 | `/reset-password` | Set new password (link from email; `?token=`) |
-| `/subscribe` | Plan + payment steps |
+| `/subscribe` | Plan + payment steps (public; sign-in required to activate) |
 | `/admin` | Manager dashboard |
 | `/admin/library` | Title CRUD (mock) |
 | `/admin/users` | Subscribers list |
