@@ -70,6 +70,8 @@ copy .env.example .env
 
 Edit `.env`: set `MONGODB_URI`, `JWT_SECRET`, and optionally `CLIENT_ORIGIN` (default `http://localhost:5173`).
 
+**Atlas fails on school Wi‑Fi (TLS / timeout)?** In `server/.env` add `MONGODB_FORCE_IPV4=true` and restart. If it still fails, many campus networks block or break TLS to Atlas—run MongoDB locally instead: from `server/` run `docker compose up -d`, then set `MONGODB_URI=mongodb://127.0.0.1:27017/cmpt315`, run `npm run seed`, and start the API.
+
 #### Email sign-in codes (SMTP)
 
 Sign in → **Use a sign-in code** sends a 6-digit code to the user’s email when the identifier is an address that exists in the database. The API sends mail with **Nodemailer**; add SMTP settings to **`server/.env`**:

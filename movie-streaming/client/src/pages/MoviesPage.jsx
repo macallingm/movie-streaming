@@ -3,6 +3,7 @@ import { MovieCard } from '../components/MovieCard'
 import { titleAllowedForProfile } from '../utils/maturity'
 import { fetchPopularMovies, mapTmdbMovieToTitle } from '../services/tmdb'
 import { useApp } from '../hooks/useApp'
+import { yearSelectOptionsFromTitles } from '../utils/yearFilterOptions'
 
 export function MoviesPage() {
   const { activeProfile } = useApp()
@@ -59,10 +60,10 @@ export function MoviesPage() {
     return ['all', ...[...s].sort()]
   }, [allTitles])
 
-  const years = useMemo(() => {
-    const s = new Set(allTitles.map((t) => String(t.releaseYear)))
-    return ['all', ...[...s].sort((a, b) => Number(b) - Number(a))]
-  }, [allTitles])
+  const years = useMemo(
+    () => yearSelectOptionsFromTitles(allTitles),
+    [allTitles]
+  )
 
   const ratings = ['all', 'G', 'PG', '14A', '18+']
 

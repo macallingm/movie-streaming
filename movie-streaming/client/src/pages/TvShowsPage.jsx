@@ -3,6 +3,7 @@ import { MovieCard } from '../components/MovieCard'
 import { titleAllowedForProfile } from '../utils/maturity'
 import { fetchPopularTv, mapTmdbTvToTitle } from '../services/tmdb'
 import { useApp } from '../hooks/useApp'
+import { yearSelectOptionsFromTitles } from '../utils/yearFilterOptions'
 
 export function TvShowsPage() {
   const { activeProfile } = useApp()
@@ -56,10 +57,10 @@ export function TvShowsPage() {
     return ['all', ...[...s].sort()]
   }, [tvTitles])
 
-  const years = useMemo(() => {
-    const s = new Set(tvTitles.map((t) => String(t.releaseYear)))
-    return ['all', ...[...s].sort((a, b) => Number(b) - Number(a))]
-  }, [tvTitles])
+  const years = useMemo(
+    () => yearSelectOptionsFromTitles(tvTitles),
+    [tvTitles]
+  )
 
   const ratings = ['all', 'G', 'PG', '14A', '18+']
 
