@@ -1,5 +1,9 @@
 # StreamLab — CMPT 315 streaming
 
+## Authors
+
+Mahar Macalling, Jordan Nguyen, Aldwin Enriquez (CMPT 315 group project).
+
 React frontend plus an **Express + MongoDB** API. The catalog, auth, profiles, My List, watch progress, billing, and admin screens load from the API when it is reachable (`VITE_API_URL`, default `http://localhost:4000`). If the API is down, you will see an error banner and an empty catalog.
 
 Layout:
@@ -181,6 +185,3 @@ Send `Authorization: Bearer <token>` for protected routes.
 | `/admin/users` | Subscribers list |
 | `/admin/analytics` | Genre report (mock) |
 
-## Authors
-
-Mahar Macalling, Jordan Nguyen, Aldwin Enriquez (CMPT 315 group project).
